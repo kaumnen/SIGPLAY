@@ -1,0 +1,10 @@
+[project]
+name = "sigplay"
+version = "0.0.1"
+description = "SIGPLAY"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "textual[syntax]>=6.5.0",
+    "textual-dev>=1.8.0",
+]
