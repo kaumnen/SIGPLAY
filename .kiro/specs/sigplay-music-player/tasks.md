@@ -6,7 +6,7 @@
   - Define ViewState enum for managing view states
   - _Requirements: 1.1, 2.1, 4.1_
 
-- [ ] 2. Create custom CSS theme file
+- [x] 2. Create custom CSS theme file
   - Create app.tcss file with retro-modern orange color palette
   - Define global styles for Screen background
   - Define styles for header, footer, and view containers

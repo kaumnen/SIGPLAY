@@ -1,0 +1,203 @@
+/* SIGPLAY - Retro-Modern Orange Theme */
+
+/* Global Screen Styles */
+Screen {
+    background: #1a1a1a;
+    color: #fff8dc;
+}
+
+/* Header Styles */
+Header {
+    dock: top;
+    height: auto;
+    background: #2d2d2d;
+    color: #ff8c00;
+    text-align: center;
+    border: solid #cc5500;
+    padding: 1;
+}
+
+#header {
+    background: #2d2d2d;
+    color: #ff8c00;
+    text-align: center;
+    height: auto;
+    border: solid #cc5500;
+}
+
+/* Footer Styles */
+Footer {
+    dock: bottom;
+    height: 3;
+    background: #2d2d2d;
+    color: #fff8dc;
+    border: solid #cc5500;
+}
+
+#footer {
+    background: #2d2d2d;
+    color: #fff8dc;
+    height: 3;
+    border: solid #cc5500;
+}
+
+/* View Container Styles */
+.view-container {
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+}
+
+ContentSwitcher {
+    background: #1a1a1a;
+    border: solid #ff8c00;
+}
+
+/* Library View Styles */
+ListView {
+    background: #1a1a1a;
+    border: none;
+    padding: 1;
+}
+
+ListItem {
+    background: #1a1a1a;
+    color: #fff8dc;
+    padding: 0 1;
+}
+
+ListItem:hover {
+    background: #2d2d2d;
+}
+
+ListItem.--highlight {
+    background: #ff8c00;
+    color: #1a1a1a;
+}
+
+ListView > ListItem.--highlight {
+    background: #ff8c00;
+    color: #1a1a1a;
+}
+
+/* Selection and Highlight Styles */
+.selected {
+    background: #ff8c00;
+    color: #1a1a1a;
+}
+
+.highlight {
+    background: #ffb347;
+    color: #1a1a1a;
+}
+
+/* Track Item Styles */
+.track-item {
+    color: #fff8dc;
+    background: #1a1a1a;
+}
+
+.track-item:hover {
+    background: #2d2d2d;
+}
+
+.track-item.selected {
+    background: #ff8c00;
+    color: #1a1a1a;
+}
+
+/* Now Playing View Styles */
+.now-playing-container {
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 2;
+    align: center middle;
+}
+
+.track-title {
+    color: #ff8c00;
+    text-style: bold;
+    text-align: center;
+}
+
+.track-info {
+    color: #ffb347;
+    text-align: center;
+}
+
+/* Progress Bar Styles */
+ProgressBar {
+    background: #2d2d2d;
+    color: #ff8c00;
+}
+
+ProgressBar > .bar--bar {
+    color: #ff8c00;
+}
+
+ProgressBar > .bar--complete {
+    color: #ff8c00;
+}
+
+ProgressBar > .bar--indeterminate {
+    color: #ffb347;
+}
+
+/* Visualizer View Styles */
+.visualizer-container {
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 2;
+    align: center middle;
+}
+
+.visualizer-content {
+    color: #ff8c00;
+    text-align: center;
+}
+
+/* Container Styles */
+Container {
+    background: #1a1a1a;
+}
+
+/* Static Widget Styles */
+Static {
+    background: transparent;
+    color: #fff8dc;
+}
+
+/* Accent Colors */
+.accent-primary {
+    color: #ff8c00;
+}
+
+.accent-light {
+    color: #ffb347;
+}
+
+.accent-dark {
+    color: #cc5500;
+}
+
+/* Border Styles */
+.border-primary {
+    border: solid #ff8c00;
+}
+
+.border-dark {
+    border: solid #cc5500;
+}
+
+/* Text Styles */
+.text-cream {
+    color: #fff8dc;
+}
+
+.text-orange {
+    color: #ff8c00;
+}
+
+.text-amber {
+    color: #ffb347;
+}
