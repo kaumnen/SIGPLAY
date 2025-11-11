@@ -1,2 +1,3 @@
-# Views will be imported here as they are implemented
-__all__ = []
+from .library import LibraryView
+
+__all__ = ["LibraryView"]
