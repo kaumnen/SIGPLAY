@@ -20,8 +20,8 @@ class VisualizerView(Container):
     }
     """
     
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.bar_heights = [random.randint(1, 20) for _ in range(40)]
         self.animation_timer = None
     
