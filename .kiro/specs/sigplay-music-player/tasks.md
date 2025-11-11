@@ -14,7 +14,7 @@
   - Define list item and hover states
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 1.3_
 
-- [ ] 3. Implement Header widget with ASCII art
+- [x] 3. Implement Header widget with ASCII art
   - Create header.py with Header widget class extending Static
   - Define SIGPLAY ASCII art as multi-line string constant
   - Implement compose method to display ASCII art
