@@ -48,7 +48,7 @@
   - Apply orange color gradient styling via CSS
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 7. Implement main SigplayApp with view switching
+- [x] 7. Implement main SigplayApp with view switching
   - Update main.py with SigplayApp class extending Textual App
   - Load and apply custom CSS theme from app.tcss
   - Implement compose method with Header, ContentSwitcher, and Footer
