@@ -30,7 +30,7 @@
   - Apply CSS styling for selection highlighting
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 2.3_
 
-- [ ] 5. Implement NowPlayingView with track info display
+- [x] 5. Implement NowPlayingView with track info display
   - Create now_playing.py with NowPlayingView widget class
   - Use Container widget with nested Static widgets for layout
   - Use built-in ProgressBar widget for playback progress
