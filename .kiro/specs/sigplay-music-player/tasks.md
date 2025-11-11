@@ -21,7 +21,7 @@
   - Apply CSS styling with orange color scheme
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 4. Implement LibraryView with vim navigation
+- [x] 4. Implement LibraryView with vim navigation
   - Create library.py with LibraryView widget class
   - Use Textual's built-in ListView and ListItem widgets
   - Generate placeholder track data (5-10 sample tracks)
