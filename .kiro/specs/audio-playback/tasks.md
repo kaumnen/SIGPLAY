@@ -20,7 +20,7 @@
   - _Requirements: 1.5, 5.2, 5.3_
 
 - [ ] 4. Implement MusicLibrary service
-- [ ] 4.1 Create MusicLibrary class structure
+- [x] 4.1 Create MusicLibrary class structure
   - Create services/music_library.py
   - Define SUPPORTED_EXTENSIONS constant (.mp3, .flac, .wav, .ogg, .m4a)
   - Define DEFAULT_MUSIC_DIR as Path.home() / "Music"
