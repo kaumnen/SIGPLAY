@@ -36,7 +36,7 @@
   - Return list of Track objects
   - _Requirements: 1.1, 1.3, 1.4_
 
-- [ ] 4.3 Implement metadata extraction
+- [x] 4.3 Implement metadata extraction
   - Implement _extract_metadata() static method using mutagen
   - Extract title, artist, album, duration from audio files
   - Handle missing tags with fallbacks (filename for title, "Unknown" for others)

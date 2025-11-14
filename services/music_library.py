@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, Any, List, Optional
+
+from mutagen import File as MutagenFile
 
 from models.track import Track
 
@@ -45,3 +47,84 @@ class MusicLibrary:
         self._tracks.sort(key=lambda t: (t.artist.lower(), t.album.lower(), t.title.lower()))
         
         return self._tracks
+    
+    def get_tracks(self) -> List[Track]:
+        """Return cached track list.
+        
+        Returns:
+            List of Track objects from last scan.
+        """
+        return self._tracks
+    
+    def get_track_by_index(self, index: int) -> Optional[Track]:
+        """Retrieve specific track by index.
+        
+        Args:
+            index: Index of track in track list.
+            
+        Returns:
+            Track object if index is valid, None otherwise.
+        """
+        if 0 <= index < len(self._tracks):
+            return self._tracks[index]
+        return None
+    
+    def refresh(self) -> None:
+        """Rescan library to update track list."""
+        self.scan()
+    
+    @staticmethod
+    def _extract_metadata(file_path: Path) -> Dict[str, Any]:
+        """Extract metadata from audio file using mutagen.
+        
+        Args:
+            file_path: Path to audio file.
+            
+        Returns:
+            Dictionary containing title, artist, album, and duration.
+            Uses fallbacks for missing tags.
+            
+        Raises:
+            Exception: If file is corrupted or cannot be read.
+        """
+        try:
+            audio = MutagenFile(file_path, easy=True)
+            
+            if audio is None:
+                raise ValueError(f"Could not read audio file: {file_path}")
+            
+            title = file_path.stem
+            if audio.tags:
+                if 'title' in audio.tags:
+                    title = str(audio.tags['title'][0]) if isinstance(audio.tags['title'], list) else str(audio.tags['title'])
+                elif 'TIT2' in audio.tags:
+                    title = str(audio.tags['TIT2'])
+            
+            artist = "Unknown Artist"
+            if audio.tags:
+                if 'artist' in audio.tags:
+                    artist = str(audio.tags['artist'][0]) if isinstance(audio.tags['artist'], list) else str(audio.tags['artist'])
+                elif 'TPE1' in audio.tags:
+                    artist = str(audio.tags['TPE1'])
+            
+            album = "Unknown Album"
+            if audio.tags:
+                if 'album' in audio.tags:
+                    album = str(audio.tags['album'][0]) if isinstance(audio.tags['album'], list) else str(audio.tags['album'])
+                elif 'TALB' in audio.tags:
+                    album = str(audio.tags['TALB'])
+            
+            duration = 0.0
+            if audio.info and hasattr(audio.info, 'length'):
+                duration = float(audio.info.length)
+            
+            return {
+                'title': title,
+                'artist': artist,
+                'album': album,
+                'duration': duration
+            }
+            
+        except Exception as e:
+            print(f"Warning: Could not extract metadata from {file_path}: {e}")
+            raise
