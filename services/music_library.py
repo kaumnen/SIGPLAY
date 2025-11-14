@@ -18,3 +18,30 @@ class MusicLibrary:
         """
         self.music_dir = music_dir or self.DEFAULT_MUSIC_DIR
         self._tracks: List[Track] = []
+    
+    def scan(self) -> List[Track]:
+        """Scan music directory for audio files and build track list.
+        
+        Returns:
+            List of Track objects sorted by artist, album, then title.
+        """
+        self._tracks = []
+        
+        if not self.music_dir.exists():
+            return self._tracks
+        
+        audio_files = []
+        for ext in self.SUPPORTED_EXTENSIONS:
+            audio_files.extend(self.music_dir.rglob(f"*{ext}"))
+        
+        for file_path in audio_files:
+            try:
+                metadata = self._extract_metadata(file_path)
+                track = Track.from_file(file_path, metadata)
+                self._tracks.append(track)
+            except Exception:
+                continue
+        
+        self._tracks.sort(key=lambda t: (t.artist.lower(), t.album.lower(), t.title.lower()))
+        
+        return self._tracks
