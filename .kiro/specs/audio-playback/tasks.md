@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Install dependencies and create service structure
+- [x] 1. Install dependencies and create service structure
   - Add pygame and mutagen dependencies using uv
   - Create services directory with __init__.py
   - Create models/playback.py for PlaybackState enum
