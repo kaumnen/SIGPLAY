@@ -48,49 +48,65 @@ class LibraryView(Container):
                 title="Neon Dreams",
                 artist="Synthwave Collective",
                 album="Retro Future",
-                duration="4:23"
+                duration="4:23",
+                file_path="",
+                duration_seconds=263
             ),
             Track(
                 title="Terminal Velocity",
                 artist="Code Warriors",
                 album="Digital Frontier",
-                duration="3:45"
+                duration="3:45",
+                file_path="",
+                duration_seconds=225
             ),
             Track(
                 title="Pixel Paradise",
                 artist="8-Bit Heroes",
                 album="Arcade Nights",
-                duration="5:12"
+                duration="5:12",
+                file_path="",
+                duration_seconds=312
             ),
             Track(
                 title="Cyber Sunset",
                 artist="Neon Riders",
                 album="Electric Dreams",
-                duration="4:01"
+                duration="4:01",
+                file_path="",
+                duration_seconds=241
             ),
             Track(
                 title="Binary Love",
                 artist="Data Romance",
                 album="Algorithm Hearts",
-                duration="3:33"
+                duration="3:33",
+                file_path="",
+                duration_seconds=213
             ),
             Track(
                 title="Quantum Leap",
                 artist="Future Sound",
                 album="Time Warp",
-                duration="4:56"
+                duration="4:56",
+                file_path="",
+                duration_seconds=296
             ),
             Track(
                 title="Retro Wave",
                 artist="Vintage Vibes",
                 album="Nostalgia Trip",
-                duration="3:28"
+                duration="3:28",
+                file_path="",
+                duration_seconds=208
             ),
             Track(
                 title="Digital Rain",
                 artist="Matrix Minds",
                 album="Code Green",
-                duration="5:34"
+                duration="5:34",
+                file_path="",
+                duration_seconds=334
             ),
         ]
     

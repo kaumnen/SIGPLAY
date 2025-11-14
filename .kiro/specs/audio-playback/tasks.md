@@ -6,12 +6,12 @@
   - Create models/playback.py for PlaybackState enum
   - _Requirements: 1.1, 2.1_
 
-- [ ] 2. Implement PlaybackState enum
+- [x] 2. Implement PlaybackState enum
   - Create PlaybackState enum with STOPPED, PLAYING, PAUSED states
   - Add to models/__init__.py for easy imports
   - _Requirements: 2.2, 3.2, 4.2_
 
-- [ ] 3. Enhance Track model with file path and duration
+- [x] 3. Enhance Track model with file path and duration
   - Add file_path field to Track dataclass
   - Add duration_seconds field for calculations
   - Implement from_file classmethod to create Track from file and metadata
