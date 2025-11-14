@@ -19,7 +19,7 @@
   - Update models/__init__.py exports
   - _Requirements: 1.5, 5.2, 5.3_
 
-- [ ] 4. Implement MusicLibrary service
+- [x] 4. Implement MusicLibrary service
 - [x] 4.1 Create MusicLibrary class structure
   - Create services/music_library.py
   - Define SUPPORTED_EXTENSIONS constant (.mp3, .flac, .wav, .ogg, .m4a)
@@ -44,7 +44,7 @@
   - Handle corrupted files gracefully (skip and log)
   - _Requirements: 1.5_
 
-- [ ] 4.4 Implement helper methods
+- [x] 4.4 Implement helper methods
   - Implement get_tracks() to return cached track list
   - Implement get_track_by_index() to retrieve specific track
   - Implement refresh() to rescan library
