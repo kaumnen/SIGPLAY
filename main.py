@@ -132,8 +132,13 @@ class SigplayApp(App):
 
 def main():
     """Entry point for the SIGPLAY application."""
-    app = SigplayApp()
-    app.run()
+    try:
+        app = SigplayApp()
+        app.run()
+    except RuntimeError as e:
+        print("\n❌ SIGPLAY cannot start\n")
+        print(f"{e}\n")
+        exit(1)
 
 
 if __name__ == "__main__":

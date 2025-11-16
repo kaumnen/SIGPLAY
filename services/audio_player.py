@@ -17,19 +17,36 @@ class AudioPlayer:
     
     def __init__(self):
         if not hasattr(self, '_initialized'):
-            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
-            pygame.mixer.music.set_endevent(pygame.USEREVENT)
-            
-            self._current_track: Optional[Track] = None
-            self._playlist: List[Track] = []
-            self._current_index: int = -1
-            self._volume: float = 0.7
-            self._state: PlaybackState = PlaybackState.STOPPED
-            self._start_time: float = 0
-            self._pause_position: float = 0
-            
-            pygame.mixer.music.set_volume(self._volume)
-            self._initialized = True
+            try:
+                pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+                
+                if not pygame.mixer.get_init():
+                    raise RuntimeError("Audio device initialization failed")
+                
+                pygame.mixer.music.set_endevent(pygame.USEREVENT)
+                
+                self._current_track: Optional[Track] = None
+                self._playlist: List[Track] = []
+                self._current_index: int = -1
+                self._volume: float = 0.7
+                self._state: PlaybackState = PlaybackState.STOPPED
+                self._start_time: float = 0
+                self._pause_position: float = 0
+                
+                pygame.mixer.music.set_volume(self._volume)
+                self._initialized = True
+                
+            except (pygame.error, RuntimeError) as e:
+                error_msg = str(e) if str(e) else "Unknown audio error"
+                raise RuntimeError(
+                    f"🔇 No audio device detected\n\n"
+                    f"SIGPLAY needs an audio output device to play music.\n"
+                    f"Please check that:\n"
+                    f"  • Your audio device is connected and powered on\n"
+                    f"  • Audio drivers are properly installed\n"
+                    f"  • The device is not being used exclusively by another app\n\n"
+                    f"Technical details: {error_msg}"
+                ) from e
     
     def play(self, track: Track) -> None:
         """Load and play an audio file."""
