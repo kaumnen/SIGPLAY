@@ -45,6 +45,7 @@ class LibraryView(Container):
     def _populate_list(self) -> None:
         """Populate ListView with tracks, showing play indicator for current track."""
         list_view = self.query_one("#track-list", ListView)
+        current_index = list_view.index
         list_view.clear()
         
         if not self.tracks:
@@ -60,6 +61,45 @@ class LibraryView(Container):
                 label_text = f"  {track.title} - {track.artist} ({track.duration})"
             
             list_view.append(ListItem(Label(label_text)))
+        
+        if current_index is not None and current_index < len(self.tracks):
+            list_view.index = current_index
+        elif len(self.tracks) > 0:
+            list_view.index = 0
+    
+    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        """Update display when selection changes to show arrows on both sides."""
+        if not self.tracks or event.list_view.index is None:
+            return
+        
+        current_track = self.audio_player.get_current_track()
+        
+        for i, item in enumerate(event.list_view.children):
+            if not isinstance(item, ListItem):
+                continue
+            
+            track = self.tracks[i] if i < len(self.tracks) else None
+            if not track:
+                continue
+            
+            label = item.query_one(Label)
+            is_selected = (i == event.list_view.index)
+            is_playing = (current_track and track.file_path == current_track.file_path)
+            
+            if is_playing and is_selected:
+                prefix = "▶ ♪"
+                suffix = " ◀"
+            elif is_playing:
+                prefix = "  ♪"
+                suffix = "  "
+            elif is_selected:
+                prefix = "▶  "
+                suffix = " ◀"
+            else:
+                prefix = "   "
+                suffix = "  "
+            
+            label.update(f"{prefix} {track.title} - {track.artist} ({track.duration}){suffix}")
     
     def _update_play_indicator(self) -> None:
         """Refresh list display to update play indicator."""
