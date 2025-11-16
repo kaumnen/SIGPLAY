@@ -1,4 +1,5 @@
 import pygame
+import time
 from typing import Optional, List
 from models.track import Track
 from models.playback import PlaybackState
@@ -32,19 +33,42 @@ class AudioPlayer:
     
     def play(self, track: Track) -> None:
         """Load and play an audio file."""
-        pass
+        try:
+            pygame.mixer.music.load(track.file_path)
+            pygame.mixer.music.play()
+            
+            self._current_track = track
+            self._state = PlaybackState.PLAYING
+            self._start_time = time.time()
+            self._pause_position = 0
+            
+            if self._playlist and track in self._playlist:
+                self._current_index = self._playlist.index(track)
+        except Exception as e:
+            self._state = PlaybackState.STOPPED
+            self._current_track = None
+            raise
     
     def pause(self) -> None:
         """Pause playback."""
-        pass
+        if self._state == PlaybackState.PLAYING:
+            pygame.mixer.music.pause()
+            self._state = PlaybackState.PAUSED
+            self._pause_position = time.time() - self._start_time
     
     def resume(self) -> None:
         """Resume playback from paused state."""
-        pass
+        if self._state == PlaybackState.PAUSED:
+            pygame.mixer.music.unpause()
+            self._state = PlaybackState.PLAYING
+            self._start_time = time.time() - self._pause_position
     
     def stop(self) -> None:
         """Stop playback and reset position."""
-        pass
+        pygame.mixer.music.stop()
+        self._state = PlaybackState.STOPPED
+        self._start_time = 0
+        self._pause_position = 0
     
     def next_track(self) -> None:
         """Skip to next track in playlist."""

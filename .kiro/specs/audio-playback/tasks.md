@@ -61,7 +61,7 @@
   - Set default volume to 70%
   - _Requirements: 2.1, 6.5_
 
-- [ ] 5.2 Implement playback control methods
+- [x] 5.2 Implement playback control methods
   - Implement play(track) method to load and play audio file
   - Implement pause() method using pygame.mixer.music.pause()
   - Implement resume() method using pygame.mixer.music.unpause()
