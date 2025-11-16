@@ -80,15 +80,16 @@ class AudioPlayer:
     
     def set_volume(self, level: float) -> None:
         """Set volume level (0.0 to 1.0)."""
-        pass
+        self._volume = max(0.0, min(1.0, level))
+        pygame.mixer.music.set_volume(self._volume)
     
     def increase_volume(self, amount: float = 0.05) -> None:
         """Increase volume by specified amount."""
-        pass
+        self.set_volume(self._volume + amount)
     
     def decrease_volume(self, amount: float = 0.05) -> None:
         """Decrease volume by specified amount."""
-        pass
+        self.set_volume(self._volume - amount)
     
     def get_state(self) -> PlaybackState:
         """Return current playback state."""

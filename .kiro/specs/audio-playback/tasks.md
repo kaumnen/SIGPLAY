@@ -69,7 +69,7 @@
   - Update state appropriately in each method
   - _Requirements: 2.1, 2.2, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 5.3 Implement volume control methods
+- [x] 5.3 Implement volume control methods
   - Implement set_volume(level) to set volume (0.0 to 1.0)
   - Implement increase_volume(amount) to increase by 5% (0.05)
   - Implement decrease_volume(amount) to decrease by 5% (0.05)
