@@ -226,7 +226,7 @@
   - Implement action_select_device() as stub (show message for future feature)
   - _Requirements: 2.1, 2.2, 3.1, 3.3, 4.1, 6.1, 6.2, 9.1, 9.2_
 
-- [ ] 9. Update Footer to show playback controls
+- [x] 9. Update Footer to show playback controls
   - Update Footer widget or binding display to show new keybindings
   - Display: "Space: Play/Pause | s: Stop | n: Next | p: Prev | +/-: Volume | o: Device"
   - Ensure footer updates dynamically based on current view

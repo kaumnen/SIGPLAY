@@ -23,11 +23,11 @@ class SigplayApp(App):
         Binding("space", "play_pause", "Play/Pause"),
         Binding("s", "stop", "Stop"),
         Binding("n", "next_track", "Next"),
-        Binding("p", "previous_track", "Previous"),
-        Binding("+", "volume_up", "Volume Up"),
-        Binding("=", "volume_up", "Volume Up"),
-        Binding("-", "volume_down", "Volume Down"),
-        Binding("o", "select_device", "Select Device"),
+        Binding("p", "previous_track", "Prev"),
+        Binding("+", "volume_up", "Vol+"),
+        Binding("=", "volume_up", "Vol+", show=False),
+        Binding("-", "volume_down", "Vol-"),
+        Binding("o", "select_device", "Device"),
     ]
     
     def __init__(self, *args, **kwargs):
