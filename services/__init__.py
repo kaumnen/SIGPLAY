@@ -1,3 +1,4 @@
 from .music_library import MusicLibrary
+from .audio_player import AudioPlayer
 
-__all__ = ['MusicLibrary']
+__all__ = ['MusicLibrary', 'AudioPlayer']
