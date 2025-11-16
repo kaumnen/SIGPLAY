@@ -248,7 +248,7 @@
   - Add logging for debugging (use Python logging module)
   - _Requirements: 1.1, 2.5, 4.4_
 
-- [ ] 12. Test and verify complete playback flow
+- [x] 12. Test and verify complete playback flow
   - Test library scanning with real music files
   - Test selecting and playing a track
   - Test pause/resume functionality
