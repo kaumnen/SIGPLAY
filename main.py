@@ -1,10 +1,12 @@
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, ContentSwitcher
 from textual.binding import Binding
 import pygame.mixer
 import asyncio
 import logging
-import sys
 from pathlib import Path
 
 from widgets.header import Header
