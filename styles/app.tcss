@@ -1,12 +1,8 @@
-/* SIGPLAY - Retro-Modern Orange Theme */
-
-/* Global Screen Styles */
 Screen {
     background: #1a1a1a;
     color: #fff8dc;
 }
 
-/* Header Styles */
 Header {
     dock: top;
     height: auto;
@@ -25,7 +21,6 @@ Header {
     border: solid #cc5500;
 }
 
-/* Footer Styles */
 Footer {
     dock: bottom;
     height: 3;
@@ -34,26 +29,11 @@ Footer {
     border: solid #cc5500;
 }
 
-#footer {
-    background: #2d2d2d;
-    color: #fff8dc;
-    height: 3;
-    border: solid #cc5500;
-}
-
-/* View Container Styles */
-.view-container {
-    background: #1a1a1a;
-    border: solid #ff8c00;
-    padding: 1;
-}
-
 ContentSwitcher {
     background: #1a1a1a;
     border: solid #ff8c00;
 }
 
-/* Library View Styles */
 ListView {
     background: #1a1a1a;
     border: none;
@@ -76,118 +56,6 @@ ListItem.--highlight {
     color: #1a1a1a;
 }
 
-ListView > ListItem.--highlight {
-    background: #ff8c00;
-    color: #1a1a1a;
-}
-
-/* Play Indicator Styles */
-.playing-indicator {
-    color: #ff8c00;
-    text-style: bold;
-}
-
-.track-playing {
-    color: #ffb347;
-}
-
-.track-playing:hover {
-    background: #2d2d2d;
-    color: #ff8c00;
-}
-
-/* Selection and Highlight Styles */
-.selected {
-    background: #ff8c00;
-    color: #1a1a1a;
-}
-
-.highlight {
-    background: #ffb347;
-    color: #1a1a1a;
-}
-
-/* Track Item Styles */
-.track-item {
-    color: #fff8dc;
-    background: #1a1a1a;
-}
-
-.track-item:hover {
-    background: #2d2d2d;
-}
-
-.track-item.selected {
-    background: #ff8c00;
-    color: #1a1a1a;
-}
-
-/* Now Playing View Styles */
-.now-playing-container {
-    background: #1a1a1a;
-    border: solid #ff8c00;
-    padding: 2;
-    align: center middle;
-}
-
-.track-title {
-    color: #ff8c00;
-    text-style: bold;
-    text-align: center;
-}
-
-.track-info {
-    color: #ffb347;
-    text-align: center;
-}
-
-/* Now Playing Widget IDs */
-#np-header {
-    color: #ff8c00;
-    text-style: bold;
-    text-align: center;
-    padding: 0 0 1 0;
-}
-
-#np-title {
-    color: #ff8c00;
-    text-style: bold;
-    text-align: center;
-    padding: 0 0 1 0;
-}
-
-#np-artist {
-    color: #ffb347;
-    text-align: center;
-    padding: 0;
-}
-
-#np-album {
-    color: #fff8dc;
-    text-align: center;
-    padding: 0 0 1 0;
-}
-
-#np-time {
-    color: #ffb347;
-    text-align: center;
-    padding: 1 0;
-}
-
-#np-volume {
-    color: #ff8c00;
-    text-align: center;
-    padding: 0;
-}
-
-#np-state {
-    color: #ffb347;
-    text-align: center;
-    padding: 0;
-    text-style: italic;
-}
-
-/* Progress Bar Styles */
 ProgressBar {
     background: #2d2d2d;
     color: #ff8c00;
@@ -207,104 +75,11 @@ ProgressBar > .bar--indeterminate {
     color: #ffb347;
 }
 
-#np-progress {
-    background: #2d2d2d;
-    color: #ff8c00;
-    border: none;
-    height: 1;
-    margin: 1 0;
-}
-
-#np-progress > .bar--bar {
-    color: #2d2d2d;
-}
-
-#np-progress > .bar--complete {
-    color: #ff8c00;
-}
-
-/* Volume and State Display Styles */
-.volume-display {
-    color: #ff8c00;
-    text-align: center;
-}
-
-.state-display {
-    color: #ffb347;
-    text-align: center;
-    text-style: italic;
-}
-
-.state-playing {
-    color: #ff8c00;
-    text-style: bold italic;
-}
-
-.state-paused {
-    color: #ffb347;
-    text-style: italic;
-}
-
-.state-stopped {
-    color: #fff8dc;
-    text-style: italic;
-}
-
-/* Visualizer View Styles */
-.visualizer-container {
-    background: #1a1a1a;
-    border: solid #ff8c00;
-    padding: 2;
-    align: center middle;
-}
-
-.visualizer-content {
-    color: #ff8c00;
-    text-align: center;
-}
-
-/* Container Styles */
 Container {
     background: #1a1a1a;
 }
 
-/* Static Widget Styles */
 Static {
     background: transparent;
     color: #fff8dc;
-}
-
-/* Accent Colors */
-.accent-primary {
-    color: #ff8c00;
-}
-
-.accent-light {
-    color: #ffb347;
-}
-
-.accent-dark {
-    color: #cc5500;
-}
-
-/* Border Styles */
-.border-primary {
-    border: solid #ff8c00;
-}
-
-.border-dark {
-    border: solid #cc5500;
-}
-
-/* Text Styles */
-.text-cream {
-    color: #fff8dc;
-}
-
-.text-orange {
-    color: #ff8c00;
-}
-
-.text-amber {
-    color: #ffb347;
 }
