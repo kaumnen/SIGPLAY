@@ -140,14 +140,14 @@
   - Update only the affected list items for efficiency
   - _Requirements: 10.4_
 
-- [ ] 7. Update NowPlayingView with real-time progress
-- [ ] 7.1 Update NowPlayingView initialization
+- [x] 7. Update NowPlayingView with real-time progress
+- [x] 7.1 Update NowPlayingView initialization
   - Add audio_player parameter to __init__
   - Store reference as instance variable
   - Initialize update timer variable
   - _Requirements: 5.1, 6.1_
 
-- [ ] 7.2 Implement view composition with progress widgets
+- [x] 7.2 Implement view composition with progress widgets
   - Update compose() to yield Static widgets for track info
   - Add ProgressBar widget with id "np-progress"
   - Add Static widgets for time display (current / total)
@@ -156,7 +156,7 @@
   - Apply CSS IDs for styling
   - _Requirements: 5.3, 5.4, 5.5, 6.4_
 
-- [ ] 7.3 Implement real-time progress updates
+- [x] 7.3 Implement real-time progress updates
   - Implement on_mount() to start update timer (1 second interval)
   - Implement _update_progress() method called by timer
   - Query audio_player.get_current_track() for track info
@@ -166,13 +166,13 @@
   - Update all display widgets with current values
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.4_
 
-- [ ] 7.4 Implement time formatting
+- [x] 7.4 Implement time formatting
   - Implement _format_time(seconds) helper method
   - Convert seconds to MM:SS format
   - Handle edge cases (0 seconds, very long tracks)
   - _Requirements: 5.2, 5.3_
 
-- [ ] 7.5 Update progress bar calculation
+- [x] 7.5 Update progress bar calculation
   - Calculate percentage: (current_position / total_duration) * 100
   - Update ProgressBar.update() with percentage
   - Handle division by zero for tracks with unknown duration
