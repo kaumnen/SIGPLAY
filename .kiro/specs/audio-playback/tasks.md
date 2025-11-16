@@ -93,14 +93,14 @@
   - Implement logic for previous track: restart if > 3 seconds, else go to previous
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 5.6 Implement state query methods
+- [x] 5.6 Implement state query methods
   - Implement get_state() to return current PlaybackState
   - Implement get_current_track() to return current Track or None
   - Implement get_volume() to return current volume level
   - Implement is_playing() to check if currently playing
   - _Requirements: 2.2, 3.2, 4.2, 6.4_
 
-- [ ] 5.7 Implement audio device management stub
+- [x] 5.7 Implement audio device management stub
   - Implement list_audio_devices() returning system default for now
   - Implement set_audio_device(device_name) as stub for future
   - Add TODO comments for future sounddevice integration

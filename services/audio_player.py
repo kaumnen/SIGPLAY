@@ -146,9 +146,18 @@ class AudioPlayer:
         return self._playlist
     
     def list_audio_devices(self) -> List[str]:
-        """List available audio output devices."""
+        """List available audio output devices.
+        
+        Currently returns system default only.
+        TODO: Integrate sounddevice library for full device enumeration.
+        """
         return ["System Default"]
     
     def set_audio_device(self, device_name: str) -> None:
-        """Set audio output device (stub for future implementation)."""
+        """Set audio output device.
+        
+        Currently a stub for future implementation.
+        TODO: Integrate sounddevice library for device selection.
+        TODO: Implement device switching without interrupting playback.
+        """
         pass
