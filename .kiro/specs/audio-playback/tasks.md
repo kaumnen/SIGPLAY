@@ -77,14 +77,14 @@
   - Use pygame.mixer.music.set_volume()
   - _Requirements: 6.1, 6.2, 6.3, 6.5_
 
-- [ ] 5.4 Implement position tracking
+- [x] 5.4 Implement position tracking
   - Implement get_position() method using pygame.mixer.music.get_pos()
   - Track start time when playback begins
   - Calculate elapsed time accounting for pauses
   - Return position in seconds
   - _Requirements: 5.1, 5.2_
 
-- [ ] 5.5 Implement playlist management
+- [x] 5.5 Implement playlist management
   - Implement set_playlist(tracks, start_index) to set current playlist
   - Implement get_playlist() to return current playlist
   - Implement next_track() to skip to next track in playlist

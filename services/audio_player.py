@@ -44,7 +44,7 @@ class AudioPlayer:
             
             if self._playlist and track in self._playlist:
                 self._current_index = self._playlist.index(track)
-        except Exception as e:
+        except Exception:
             self._state = PlaybackState.STOPPED
             self._current_track = None
             raise
@@ -72,11 +72,30 @@ class AudioPlayer:
     
     def next_track(self) -> None:
         """Skip to next track in playlist."""
-        pass
+        if not self._playlist:
+            return
+        
+        if self._current_index < len(self._playlist) - 1:
+            self._current_index += 1
+            next_track = self._playlist[self._current_index]
+            self.play(next_track)
+        else:
+            self.stop()
     
     def previous_track(self) -> None:
         """Skip to previous track in playlist."""
-        pass
+        if not self._playlist:
+            return
+        
+        current_position = self.get_position()
+        
+        if current_position > 3.0:
+            current_track = self._playlist[self._current_index]
+            self.play(current_track)
+        elif self._current_index > 0:
+            self._current_index -= 1
+            prev_track = self._playlist[self._current_index]
+            self.play(prev_track)
     
     def set_volume(self, level: float) -> None:
         """Set volume level (0.0 to 1.0)."""
@@ -101,6 +120,12 @@ class AudioPlayer:
     
     def get_position(self) -> float:
         """Return current playback position in seconds."""
+        if self._state == PlaybackState.STOPPED:
+            return 0.0
+        elif self._state == PlaybackState.PAUSED:
+            return self._pause_position
+        elif self._state == PlaybackState.PLAYING:
+            return time.time() - self._start_time
         return 0.0
     
     def get_volume(self) -> float:
@@ -113,7 +138,8 @@ class AudioPlayer:
     
     def set_playlist(self, tracks: List[Track], start_index: int = 0) -> None:
         """Set current playlist and starting track index."""
-        pass
+        self._playlist = tracks
+        self._current_index = max(0, min(start_index, len(tracks) - 1)) if tracks else -1
     
     def get_playlist(self) -> List[Track]:
         """Return current playlist."""
