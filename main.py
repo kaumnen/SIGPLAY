@@ -264,7 +264,7 @@ def main():
         logger.critical(f"Fatal error during startup: {e}")
         print("\n❌ SIGPLAY cannot start\n")
         print(f"{e}\n")
-        print("Check sigplay.log for more details.\n")
+        print(f"Check {log_file} for more details.\n")
         exit(1)
     except KeyboardInterrupt:
         logger.info("SIGPLAY interrupted by user")
@@ -274,7 +274,7 @@ def main():
         logger.critical(f"Unexpected fatal error: {type(e).__name__}: {e}", exc_info=True)
         print("\n❌ SIGPLAY encountered an unexpected error\n")
         print(f"{type(e).__name__}: {e}\n")
-        print("Check sigplay.log for more details.\n")
+        print(f"Check {log_file} for more details.\n")
         exit(1)
 
 
