@@ -1,4 +1,4 @@
-import pygame
+import pygame.mixer
 import time
 from typing import Optional, List
 from models.track import Track
@@ -23,8 +23,6 @@ class AudioPlayer:
                 if not pygame.mixer.get_init():
                     raise RuntimeError("Audio device initialization failed")
                 
-                pygame.mixer.music.set_endevent(pygame.USEREVENT)
-                
                 self._current_track: Optional[Track] = None
                 self._playlist: List[Track] = []
                 self._current_index: int = -1
@@ -36,7 +34,7 @@ class AudioPlayer:
                 pygame.mixer.music.set_volume(self._volume)
                 self._initialized = True
                 
-            except (pygame.error, RuntimeError) as e:
+            except (pygame.mixer.error, RuntimeError) as e:
                 error_msg = str(e) if str(e) else "Unknown audio error"
                 raise RuntimeError(
                     f"🔇 No audio device detected\n\n"

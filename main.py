@@ -1,7 +1,7 @@
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, ContentSwitcher
 from textual.binding import Binding
-import pygame
+import pygame.mixer
 import asyncio
 
 from widgets.header import Header
@@ -57,7 +57,7 @@ class SigplayApp(App):
         self._update_footer()
         
         self.run_worker(self._scan_library, exclusive=True)
-        self.set_interval(0.1, self._check_pygame_events)
+        self.set_interval(0.5, self._check_track_end)
     
     async def _scan_library(self) -> None:
         """Scan music library in background thread."""
@@ -67,11 +67,10 @@ class SigplayApp(App):
         library_view.tracks = tracks
         library_view._populate_list()
     
-    def _check_pygame_events(self) -> None:
-        """Check for pygame events, particularly track end events."""
-        for event in pygame.event.get():
-            if event.type == pygame.USEREVENT:
-                self.audio_player.next_track()
+    def _check_track_end(self) -> None:
+        """Check if track has ended and advance to next."""
+        if self.audio_player.is_playing() and not pygame.mixer.music.get_busy():
+            self.audio_player.next_track()
     
     def action_quit(self) -> None:
         """Handle quit action for clean shutdown."""
