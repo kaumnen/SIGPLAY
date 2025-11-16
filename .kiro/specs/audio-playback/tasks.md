@@ -51,7 +51,7 @@
   - Add services/__init__.py with exports
   - _Requirements: 1.1_
 
-- [ ] 5. Implement AudioPlayer service
+- [x] 5. Implement AudioPlayer service
 - [x] 5.1 Create AudioPlayer singleton structure
   - Create services/audio_player.py
   - Implement singleton pattern with __new__ method
@@ -106,20 +106,20 @@
   - Add TODO comments for future sounddevice integration
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 6. Update LibraryView to use real tracks and handle playback
-- [ ] 6.1 Update LibraryView initialization
+- [x] 6. Update LibraryView to use real tracks and handle playback
+- [x] 6.1 Update LibraryView initialization
   - Add music_library and audio_player parameters to __init__
   - Store references as instance variables
   - Remove placeholder track data
   - _Requirements: 1.1, 2.1_
 
-- [ ] 6.2 Implement track loading from MusicLibrary
+- [x] 6.2 Implement track loading from MusicLibrary
   - Update on_mount() to load tracks from music_library.get_tracks()
   - Handle empty library case with message
   - Populate ListView with real track data
   - _Requirements: 1.1, 5.1_
 
-- [ ] 6.3 Implement track selection and playback
+- [x] 6.3 Implement track selection and playback
   - Implement on_list_view_selected() handler for Enter key
   - Get selected track from tracks list
   - Call audio_player.set_playlist() with all tracks and selected index
@@ -127,14 +127,14 @@
   - Switch to Now Playing view using app.switch_view()
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6.4 Implement play indicator display
+- [x] 6.4 Implement play indicator display
   - Update _populate_list() to show ♪ symbol next to currently playing track
   - Query audio_player.get_current_track() to determine which track is playing
   - Format list items as "♪ Title - Artist (Duration)" for playing track
   - Format list items as "  Title - Artist (Duration)" for other tracks
   - _Requirements: 10.1, 10.2, 10.3_
 
-- [ ] 6.5 Implement play indicator updates
+- [x] 6.5 Implement play indicator updates
   - Implement _update_play_indicator() method to refresh list display
   - Call this method when track changes (use Textual reactive or manual refresh)
   - Update only the affected list items for efficiency

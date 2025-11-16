@@ -24,91 +24,66 @@ class LibraryView(Container):
     BINDINGS = [
         ("j", "move_down", "Move down"),
         ("k", "move_up", "Move up"),
+        ("enter", "select_track", "Play track"),
     ]
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, music_library, audio_player, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.tracks = self._generate_placeholder_tracks()
+        self.music_library = music_library
+        self.audio_player = audio_player
+        self.tracks = []
+    
+    def on_mount(self) -> None:
+        """Load tracks from music library when view is mounted."""
+        self.tracks = self.music_library.get_tracks()
+        self._populate_list()
     
     def compose(self) -> ComposeResult:
         """Compose the library view with a list of tracks."""
         yield Label("🎵 Music Library")
-        yield ListView(
-            *[
-                ListItem(Label(f"♪ {track.title} - {track.artist} ({track.album}) [{track.duration}]"))
-                for track in self.tracks
-            ],
-            id="track-list"
-        )
+        yield ListView(id="track-list")
     
-    def _generate_placeholder_tracks(self) -> list[Track]:
-        """Generate placeholder track data for testing."""
-        return [
-            Track(
-                title="Neon Dreams",
-                artist="Synthwave Collective",
-                album="Retro Future",
-                duration="4:23",
-                file_path="",
-                duration_seconds=263
-            ),
-            Track(
-                title="Terminal Velocity",
-                artist="Code Warriors",
-                album="Digital Frontier",
-                duration="3:45",
-                file_path="",
-                duration_seconds=225
-            ),
-            Track(
-                title="Pixel Paradise",
-                artist="8-Bit Heroes",
-                album="Arcade Nights",
-                duration="5:12",
-                file_path="",
-                duration_seconds=312
-            ),
-            Track(
-                title="Cyber Sunset",
-                artist="Neon Riders",
-                album="Electric Dreams",
-                duration="4:01",
-                file_path="",
-                duration_seconds=241
-            ),
-            Track(
-                title="Binary Love",
-                artist="Data Romance",
-                album="Algorithm Hearts",
-                duration="3:33",
-                file_path="",
-                duration_seconds=213
-            ),
-            Track(
-                title="Quantum Leap",
-                artist="Future Sound",
-                album="Time Warp",
-                duration="4:56",
-                file_path="",
-                duration_seconds=296
-            ),
-            Track(
-                title="Retro Wave",
-                artist="Vintage Vibes",
-                album="Nostalgia Trip",
-                duration="3:28",
-                file_path="",
-                duration_seconds=208
-            ),
-            Track(
-                title="Digital Rain",
-                artist="Matrix Minds",
-                album="Code Green",
-                duration="5:34",
-                file_path="",
-                duration_seconds=334
-            ),
-        ]
+    def _populate_list(self) -> None:
+        """Populate ListView with tracks, showing play indicator for current track."""
+        list_view = self.query_one("#track-list", ListView)
+        list_view.clear()
+        
+        if not self.tracks:
+            list_view.append(ListItem(Label("No music files found in ~/Music")))
+            return
+        
+        current_track = self.audio_player.get_current_track()
+        
+        for track in self.tracks:
+            if current_track and track.file_path == current_track.file_path:
+                label_text = f"♪ {track.title} - {track.artist} ({track.duration})"
+            else:
+                label_text = f"  {track.title} - {track.artist} ({track.duration})"
+            
+            list_view.append(ListItem(Label(label_text)))
+    
+    def _update_play_indicator(self) -> None:
+        """Refresh list display to update play indicator."""
+        self._populate_list()
+    
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Handle Enter key press to play selected track."""
+        if not self.tracks:
+            return
+        
+        selected_index = event.list_view.index
+        if selected_index is None or selected_index >= len(self.tracks):
+            return
+        
+        track = self.tracks[selected_index]
+        self.audio_player.set_playlist(self.tracks, selected_index)
+        self.audio_player.play(track)
+        
+        self._update_play_indicator()
+        
+        from textual.widgets import ContentSwitcher
+        switcher = self.app.query_one(ContentSwitcher)
+        switcher.current = "now_playing"
     
     def action_move_down(self) -> None:
         """Move selection down in the list (j key)."""
@@ -119,4 +94,10 @@ class LibraryView(Container):
         """Move selection up in the list (k key)."""
         list_view = self.query_one("#track-list", ListView)
         list_view.action_cursor_up()
+    
+    def action_select_track(self) -> None:
+        """Play selected track (Enter key)."""
+        list_view = self.query_one("#track-list", ListView)
+        if list_view.index is not None:
+            self.on_list_view_selected(ListView.Selected(list_view, list_view.highlighted_child))
 
