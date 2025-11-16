@@ -1,9 +1,12 @@
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+import logging
 
 from mutagen import File as MutagenFile
 
 from models.track import Track
+
+logger = logging.getLogger(__name__)
 
 
 class MusicLibrary:
@@ -26,27 +29,57 @@ class MusicLibrary:
         
         Returns:
             List of Track objects sorted by artist, album, then title.
+        
+        Raises:
+            FileNotFoundError: If music directory doesn't exist.
+            PermissionError: If music directory cannot be accessed.
         """
         self._tracks = []
         
         if not self.music_dir.exists():
+            logger.warning(f"Music directory does not exist: {self.music_dir}")
+            raise FileNotFoundError(
+                f"Music directory not found: {self.music_dir}\n\n"
+                f"Please ensure your music files are in the default location,\n"
+                f"or the directory exists and is accessible."
+            )
+        
+        if not self.music_dir.is_dir():
+            logger.error(f"Music path is not a directory: {self.music_dir}")
+            raise NotADirectoryError(f"{self.music_dir} is not a directory")
+        
+        try:
+            audio_files = []
+            for ext in self.SUPPORTED_EXTENSIONS:
+                audio_files.extend(self.music_dir.rglob(f"*{ext}"))
+            
+            logger.info(f"Found {len(audio_files)} audio files in {self.music_dir}")
+            
+            skipped_files = 0
+            for file_path in audio_files:
+                try:
+                    metadata = self._extract_metadata(file_path)
+                    track = Track.from_file(file_path, metadata)
+                    self._tracks.append(track)
+                except Exception as e:
+                    skipped_files += 1
+                    logger.warning(f"Skipped corrupted file {file_path}: {e}")
+                    continue
+            
+            if skipped_files > 0:
+                logger.info(f"Skipped {skipped_files} corrupted or unreadable files")
+            
+            self._tracks.sort(key=lambda t: (t.artist.lower(), t.album.lower(), t.title.lower()))
+            logger.info(f"Successfully loaded {len(self._tracks)} tracks")
+            
             return self._tracks
-        
-        audio_files = []
-        for ext in self.SUPPORTED_EXTENSIONS:
-            audio_files.extend(self.music_dir.rglob(f"*{ext}"))
-        
-        for file_path in audio_files:
-            try:
-                metadata = self._extract_metadata(file_path)
-                track = Track.from_file(file_path, metadata)
-                self._tracks.append(track)
-            except Exception:
-                continue
-        
-        self._tracks.sort(key=lambda t: (t.artist.lower(), t.album.lower(), t.title.lower()))
-        
-        return self._tracks
+            
+        except PermissionError as e:
+            logger.error(f"Permission denied accessing music directory: {self.music_dir}")
+            raise PermissionError(
+                f"Cannot access music directory: {self.music_dir}\n\n"
+                f"Please check directory permissions."
+            ) from e
     
     def get_tracks(self) -> List[Track]:
         """Return cached track list.
@@ -85,13 +118,19 @@ class MusicLibrary:
             Uses fallbacks for missing tags.
             
         Raises:
-            Exception: If file is corrupted or cannot be read.
+            ValueError: If file is corrupted or cannot be read.
+            FileNotFoundError: If file doesn't exist.
         """
+        if not file_path.exists():
+            logger.error(f"Audio file not found: {file_path}")
+            raise FileNotFoundError(f"Audio file not found: {file_path}")
+        
         try:
             audio = MutagenFile(file_path, easy=True)
             
             if audio is None:
-                raise ValueError(f"Could not read audio file: {file_path}")
+                logger.warning(f"Mutagen could not read file: {file_path}")
+                raise ValueError(f"Corrupted or unsupported audio file: {file_path.name}")
             
             title = file_path.stem
             if audio.tags:
@@ -118,6 +157,8 @@ class MusicLibrary:
             if audio.info and hasattr(audio.info, 'length'):
                 duration = float(audio.info.length)
             
+            logger.debug(f"Extracted metadata from {file_path.name}: {title} by {artist}")
+            
             return {
                 'title': title,
                 'artist': artist,
@@ -126,5 +167,5 @@ class MusicLibrary:
             }
             
         except Exception as e:
-            print(f"Warning: Could not extract metadata from {file_path}: {e}")
-            raise
+            logger.error(f"Failed to extract metadata from {file_path}: {type(e).__name__}: {e}")
+            raise ValueError(f"Cannot read audio file {file_path.name}: {type(e).__name__}") from e

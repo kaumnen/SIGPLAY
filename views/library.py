@@ -1,7 +1,6 @@
 from textual.app import ComposeResult
 from textual.widgets import ListView, ListItem, Label
 from textual.containers import Container
-from models.track import Track
 
 
 class LibraryView(Container):
@@ -67,7 +66,10 @@ class LibraryView(Container):
         self._populate_list()
     
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        """Handle Enter key press to play selected track."""
+        """Handle Enter key press to play selected track.
+        
+        Displays error notification if track cannot be played.
+        """
         if not self.tracks:
             return
         
@@ -77,13 +79,27 @@ class LibraryView(Container):
         
         track = self.tracks[selected_index]
         self.audio_player.set_playlist(self.tracks, selected_index)
-        self.audio_player.play(track)
         
-        self._update_play_indicator()
-        
-        from textual.widgets import ContentSwitcher
-        switcher = self.app.query_one(ContentSwitcher)
-        switcher.current = "now_playing"
+        try:
+            self.audio_player.play(track)
+            self._update_play_indicator()
+            
+            from textual.widgets import ContentSwitcher
+            switcher = self.app.query_one(ContentSwitcher)
+            switcher.current = "now_playing"
+            
+        except FileNotFoundError:
+            self.app.notify(
+                f"❌ File not found: {track.title}\n\nThe file may have been moved or deleted.",
+                severity="error",
+                timeout=5
+            )
+        except RuntimeError:
+            self.app.notify(
+                f"❌ Cannot play: {track.title}\n\nThe file may be corrupted or unsupported.",
+                severity="error",
+                timeout=5
+            )
     
     def action_move_down(self) -> None:
         """Move selection down in the list (j key)."""

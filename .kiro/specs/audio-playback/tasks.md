@@ -240,7 +240,7 @@
   - Add hover effects for better UX
   - _Requirements: 5.3, 5.4, 6.4, 10.1, 10.2, 10.3_
 
-- [ ] 11. Handle error cases and edge conditions
+- [-] 11. Handle error cases and edge conditions
   - Add error handling for missing music directory in MusicLibrary
   - Add error handling for corrupted audio files in AudioPlayer
   - Add error handling for file not found during playback
