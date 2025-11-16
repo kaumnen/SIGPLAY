@@ -179,6 +179,10 @@ class SigplayApp(App):
         switcher.current = self.current_view.value
         
         self._update_footer()
+        
+        if self.current_view == ViewState.LIBRARY:
+            library_view = self.query_one("#library", LibraryView)
+            library_view.focus()
     
     def action_play_pause(self) -> None:
         """Toggle play/pause state."""

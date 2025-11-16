@@ -36,6 +36,8 @@ class LibraryView(Container):
         """Load tracks from music library when view is mounted."""
         self.tracks = self.music_library.get_tracks()
         self._populate_list()
+        self.can_focus = True
+        self.focus()
     
     def compose(self) -> ComposeResult:
         """Compose the library view with a list of tracks."""
