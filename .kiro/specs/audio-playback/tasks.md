@@ -178,14 +178,14 @@
   - Handle division by zero for tracks with unknown duration
   - _Requirements: 5.4_
 
-- [ ] 8. Update main app with playback integration
-- [ ] 8.1 Initialize services in SigplayApp
+- [x] 8. Update main app with playback integration
+- [x] 8.1 Initialize services in SigplayApp
   - Import AudioPlayer and MusicLibrary
   - Create AudioPlayer instance in __init__
   - Create MusicLibrary instance in __init__
   - _Requirements: 1.1, 2.1_
 
-- [ ] 8.2 Implement library scanning on startup
+- [x] 8.2 Implement library scanning on startup
   - Implement on_mount() to start library scan
   - Use run_worker() to scan library in background thread
   - Implement _scan_library() async method
@@ -193,20 +193,20 @@
   - Show loading indicator during scan (optional)
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 8.3 Implement pygame event checking for track end
+- [x] 8.3 Implement pygame event checking for track end
   - Set up interval timer in on_mount() to check pygame events (0.1 second)
   - Implement _check_pygame_events() method
   - Check for pygame.USEREVENT (track end event)
   - Call audio_player.next_track() when track ends
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 8.4 Update view composition with service injection
+- [x] 8.4 Update view composition with service injection
   - Update compose() to pass music_library and audio_player to LibraryView
   - Update compose() to pass audio_player to NowPlayingView
   - Ensure VisualizerView remains unchanged
   - _Requirements: 2.1, 5.1_
 
-- [ ] 8.5 Implement playback control keybindings
+- [x] 8.5 Implement playback control keybindings
   - Add keybinding for space bar to action_play_pause
   - Add keybinding for 's' key to action_stop
   - Add keybinding for 'n' key to action_next_track
@@ -216,7 +216,7 @@
   - Add keybinding for 'o' key to action_select_device (stub)
   - _Requirements: 2.1, 3.1, 4.1, 6.1, 6.2, 9.1, 9.2_
 
-- [ ] 8.6 Implement playback control action methods
+- [x] 8.6 Implement playback control action methods
   - Implement action_play_pause() to toggle play/pause
   - Implement action_stop() to stop playback
   - Implement action_next_track() to skip to next track
