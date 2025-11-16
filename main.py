@@ -5,6 +5,7 @@ import pygame.mixer
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 from widgets.header import Header
 from views.library import LibraryView
@@ -14,12 +15,15 @@ from models.track import ViewState
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 
+log_dir = Path.home() / '.local' / 'share' / 'sigplay'
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = log_dir / 'sigplay.log'
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('sigplay.log'),
-        logging.StreamHandler(sys.stderr)
+        logging.FileHandler(log_file)
     ]
 )
 
