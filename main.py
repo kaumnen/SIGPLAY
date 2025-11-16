@@ -2,6 +2,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, ContentSwitcher
 from textual.binding import Binding
 import pygame
+import asyncio
 
 from widgets.header import Header
 from views.library import LibraryView
@@ -60,7 +61,7 @@ class SigplayApp(App):
     
     async def _scan_library(self) -> None:
         """Scan music library in background thread."""
-        tracks = await self.run_in_thread(self.music_library.scan)
+        tracks = await asyncio.to_thread(self.music_library.scan)
         
         library_view = self.query_one("#library", LibraryView)
         library_view.tracks = tracks
