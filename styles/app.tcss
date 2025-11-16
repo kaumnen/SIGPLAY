@@ -68,6 +68,7 @@ ListItem {
 
 ListItem:hover {
     background: #2d2d2d;
+    color: #ffb347;
 }
 
 ListItem.--highlight {
@@ -78,6 +79,21 @@ ListItem.--highlight {
 ListView > ListItem.--highlight {
     background: #ff8c00;
     color: #1a1a1a;
+}
+
+/* Play Indicator Styles */
+.playing-indicator {
+    color: #ff8c00;
+    text-style: bold;
+}
+
+.track-playing {
+    color: #ffb347;
+}
+
+.track-playing:hover {
+    background: #2d2d2d;
+    color: #ff8c00;
 }
 
 /* Selection and Highlight Styles */
@@ -125,14 +141,62 @@ ListView > ListItem.--highlight {
     text-align: center;
 }
 
+/* Now Playing Widget IDs */
+#np-header {
+    color: #ff8c00;
+    text-style: bold;
+    text-align: center;
+    padding: 0 0 1 0;
+}
+
+#np-title {
+    color: #ff8c00;
+    text-style: bold;
+    text-align: center;
+    padding: 0 0 1 0;
+}
+
+#np-artist {
+    color: #ffb347;
+    text-align: center;
+    padding: 0;
+}
+
+#np-album {
+    color: #fff8dc;
+    text-align: center;
+    padding: 0 0 1 0;
+}
+
+#np-time {
+    color: #ffb347;
+    text-align: center;
+    padding: 1 0;
+}
+
+#np-volume {
+    color: #ff8c00;
+    text-align: center;
+    padding: 0;
+}
+
+#np-state {
+    color: #ffb347;
+    text-align: center;
+    padding: 0;
+    text-style: italic;
+}
+
 /* Progress Bar Styles */
 ProgressBar {
     background: #2d2d2d;
     color: #ff8c00;
+    height: 1;
 }
 
 ProgressBar > .bar--bar {
     color: #ff8c00;
+    background: #2d2d2d;
 }
 
 ProgressBar > .bar--complete {
@@ -141,6 +205,49 @@ ProgressBar > .bar--complete {
 
 ProgressBar > .bar--indeterminate {
     color: #ffb347;
+}
+
+#np-progress {
+    background: #2d2d2d;
+    color: #ff8c00;
+    border: none;
+    height: 1;
+    margin: 1 0;
+}
+
+#np-progress > .bar--bar {
+    color: #2d2d2d;
+}
+
+#np-progress > .bar--complete {
+    color: #ff8c00;
+}
+
+/* Volume and State Display Styles */
+.volume-display {
+    color: #ff8c00;
+    text-align: center;
+}
+
+.state-display {
+    color: #ffb347;
+    text-align: center;
+    text-style: italic;
+}
+
+.state-playing {
+    color: #ff8c00;
+    text-style: bold italic;
+}
+
+.state-paused {
+    color: #ffb347;
+    text-style: italic;
+}
+
+.state-stopped {
+    color: #fff8dc;
+    text-style: italic;
 }
 
 /* Visualizer View Styles */

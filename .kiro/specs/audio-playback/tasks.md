@@ -232,7 +232,7 @@
   - Ensure footer updates dynamically based on current view
   - _Requirements: 2.1, 3.1, 4.1, 6.1, 9.1_
 
-- [ ] 10. Update CSS styles for new widgets
+- [x] 10. Update CSS styles for new widgets
   - Add styles for play indicator (♪ symbol) in library view
   - Add styles for progress bar in now playing view
   - Add styles for volume and state displays
