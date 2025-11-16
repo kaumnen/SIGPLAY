@@ -66,9 +66,9 @@ class NowPlayingView(Container):
     }
     """
 
-    def __init__(self, audio_player: AudioPlayer):
+    def __init__(self, audio_player: AudioPlayer, **kwargs):
         """Initialize NowPlayingView with audio player reference."""
-        super().__init__()
+        super().__init__(**kwargs)
         self.audio_player = audio_player
         self._update_timer = None
 
