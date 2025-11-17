@@ -19,9 +19,10 @@ inclusion: always
 textual[syntax]>=6.5.0  # Main TUI framework with syntax highlighting
 textual-dev>=1.8.0      # Development tools (console, run --dev)
 miniaudio>=1.61         # Audio playback and streaming
-numpy>=1.26.0           # FFT calculations for visualizer
+numpy>=1.26.0           # FFT calculations for meters
 mutagen>=1.47.0         # Audio metadata extraction
 psutil>=7.1.3           # CPU/memory monitoring
+pygame>=2.6.1           # Additional audio support
 ```
 
 ## Running & Testing
@@ -29,6 +30,9 @@ psutil>=7.1.3           # CPU/memory monitoring
 ```bash
 # Run application
 uv run main.py
+
+# Run via entry point
+uv run sigplay
 
 # Development mode with live reload and console
 uv run textual run --dev main.py
@@ -121,7 +125,8 @@ class Track:
 
 ### Async/Threading
 - Use `asyncio` for Textual's async methods (`on_mount`, etc.)
-- Use `threading.Thread` for blocking operations (file scanning, background tasks)
+- Use `asyncio.to_thread()` for blocking operations (file scanning, background tasks)
+- Use `run_worker()` for background tasks in Textual
 - Use `call_from_thread()` to update UI from background threads
 - Audio playback uses miniaudio's generator-based callback system (no manual threading needed)
 

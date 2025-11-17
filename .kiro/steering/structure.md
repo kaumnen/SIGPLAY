@@ -8,9 +8,9 @@ inclusion: always
 
 ```
 sigplay/
-├── main.py              # Entry point: SigplayApp class, global keybindings, view switching
-├── views/               # Screen implementations (library, now_playing, visualizer)
-├── widgets/             # Reusable UI components (header, footer)
+├── main.py              # Entry point: SigplayApp class, global keybindings, logging setup
+├── views/               # Screen implementations (library, now_playing, meters)
+├── widgets/             # Reusable UI components (header)
 ├── services/            # Business logic (audio_player, music_library, spectrum_analyzer)
 ├── models/              # Data models (Track, Playback, Frequency dataclasses)
 ├── styles/              # Textual CSS files (app.tcss)
@@ -34,10 +34,11 @@ sigplay/
 ```
 SigplayApp (main.py)
 ├── Header (widgets/header.py)
-├── ContentSwitcher
-│   ├── LibraryView (views/library.py)
-│   ├── NowPlayingView (views/now_playing.py)
-│   └── VisualizerView (views/visualizer.py)
+├── Vertical (#main-container)
+│   ├── Horizontal (#top-container)
+│   │   ├── LibraryView (views/library.py)
+│   │   └── NowPlayingView (views/now_playing.py)
+│   └── MetersView (views/meters.py)
 └── Footer (Textual built-in)
 ```
 

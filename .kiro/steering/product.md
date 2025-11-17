@@ -28,13 +28,13 @@ The app uses a fixed 3-component layout:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ Header (ASCII art logo)                         │
+│ Header (ASCII art logo + volume)                │
 ├──────────────────┬──────────────────────────────┤
 │ Library          │ Now Playing                  │
 │ (left side)      │ (right side)                 │
 │                  │                              │
 ├──────────────────┴──────────────────────────────┤
-│ Visualizer (full width)                         │
+│ Meters (full width)                             │
 ├─────────────────────────────────────────────────┤
 │ Footer (keybindings)                            │
 └─────────────────────────────────────────────────┘
@@ -86,7 +86,7 @@ The app uses a fixed 3-component layout:
 - Displays: Title, Artist, Album, Duration
 - Auto-advances to next track when current track ends
 
-## Visualizer Behavior
+## Meters Behavior
 
 - **Active state**: Shows frequency bars when music is playing
 - **Idle state**: Shows baseline only when stopped
