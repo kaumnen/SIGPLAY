@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Python Steering Updater",
+  "description": "Monitors all .py files in the workspace. When any Python file is edited, automatically reviews the steering files (uv-steering.md, tech.md, structure.md, product.md) and updates them as needed to reflect current project patterns and requirements.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A Python file has been updated. Please review the current steering files (uv-steering.md, tech.md, structure.md, product.md) and check if they need to be updated based on the changes made to the Python code. Look for new patterns, architectural changes, dependency updates, or feature additions that should be documented in the steering files. If updates are needed, modify the appropriate steering file(s) to keep them accurate and current."
+  }
+}
