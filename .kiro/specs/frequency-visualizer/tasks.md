@@ -68,14 +68,14 @@
   - Test error handling for missing audio devices
   - Test thread-safe buffer access
 
-- [ ] 5. Update VisualizerView for frequency visualization
+- [x] 5. Update VisualizerView for frequency visualization
   - Update views/visualizer.py to accept audio_player parameter in __init__
   - Initialize SpectrumAnalyzer instance in __init__
   - Update on_mount to start spectrum analyzer and set 20 FPS update interval
   - Add on_unmount method to stop spectrum analyzer when view is hidden
   - _Requirements: 1.1, 6.1, 6.3_
 
-- [ ] 5.1 Implement frequency bar rendering
+- [x] 5.1 Implement frequency bar rendering
   - Implement _render_bars method that takes FrequencyBands and returns string
   - Resample frequency data to match bar_count using numpy.interp
   - Convert normalized amplitudes to bar heights (0 to max_bar_height)
@@ -91,7 +91,7 @@
   - **Property 5: Bar height proportionality**
   - **Validates: Requirements 1.3, 2.3**
 
-- [ ] 5.4 Implement baseline-only rendering for non-playing state
+- [x] 5.4 Implement baseline-only rendering for non-playing state
   - Implement _render_baseline_only method
   - Display baseline with minimal bar heights when audio is not playing
   - Ensure visual consistency with active visualization
@@ -101,7 +101,7 @@
   - **Property 7: Zero amplitude baseline**
   - **Validates: Requirements 7.1, 7.3**
 
-- [ ] 5.6 Update visualization update loop
+- [x] 5.6 Update visualization update loop
   - Modify _update_visualization to check if audio is playing
   - Fetch frequency bands from spectrum analyzer when playing
   - Call _render_bars with frequency data

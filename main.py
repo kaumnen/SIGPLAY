@@ -73,7 +73,7 @@ class SigplayApp(App):
                 yield LibraryView(self.music_library, self.audio_player, id="library")
                 yield NowPlayingView(self.audio_player, id="now_playing")
             
-            yield VisualizerView(id="visualizer")
+            yield VisualizerView(self.audio_player, id="visualizer")
         
         yield Footer()
     
