@@ -4,6 +4,7 @@ from textual.containers import Container, Vertical
 from textual.widgets import Static
 from rich.text import Text
 from services.audio_player import AudioPlayer
+from models.track import format_time
 
 
 class NowPlayingView(Container):
@@ -26,11 +27,8 @@ class NowPlayingView(Container):
             yield Static("No track playing", id="np-title", classes="track-title")
             yield Static("Artist: Unknown", id="np-artist", classes="track-metadata")
             yield Static("Album: Unknown", id="np-album", classes="track-metadata")
-            
-            with Container(classes="progress-container"):
-                yield Static("0:00 / 0:00", id="np-time", classes="time-display")
-                yield Static("State: Stopped", id="np-state", classes="state-display")
-            
+            yield Static("0:00 / 0:00", id="np-time", classes="time-display")
+            yield Static("State: Stopped", id="np-state", classes="state-display")
             yield Static(self._render_vu_meters(0.0, 0.0), id="np-vu-meters")
 
     def on_mount(self) -> None:
@@ -58,8 +56,8 @@ class NowPlayingView(Container):
             
             total_duration = current_track.duration_seconds
             
-            current_time_str = self._format_time(current_position)
-            total_time_str = self._format_time(total_duration)
+            current_time_str = format_time(current_position)
+            total_time_str = format_time(total_duration)
             time_widget = self.query_one("#np-time", Static)
             time_widget.update(f"{current_time_str} / {total_time_str}")
         else:
@@ -77,56 +75,6 @@ class NowPlayingView(Container):
         
         state_widget = self.query_one("#np-state", Static)
         state_widget.update(f"State: {playback_state.value.capitalize()}")
-    
-    def _render_volume_bar(self, volume_level: float) -> Text:
-        """Render a visual volume bar.
-        
-        Args:
-            volume_level: Volume level from 0.0 to 1.0
-            
-        Returns:
-            Rich Text object with volume bar visualization
-        """
-        result = Text()
-        
-        bar_width = 30
-        filled_bars = int(volume_level * bar_width)
-        percentage = int(volume_level * 100)
-        
-        result.append("Volume: ", style="#888888")
-        result.append("│", style="#888888")
-        
-        for i in range(bar_width):
-            if i < filled_bars:
-                if i < bar_width * 0.5:
-                    result.append("█", style="#cc5500")
-                elif i < bar_width * 0.75:
-                    result.append("█", style="#ff8c00")
-                else:
-                    result.append("█", style="#ffb347")
-            else:
-                result.append("─", style="#333333")
-        
-        result.append("│ ", style="#888888")
-        result.append(f"{percentage}%", style="#ff8c00 bold")
-        
-        return result
-    
-    def _format_time(self, seconds: float) -> str:
-        """Convert seconds to MM:SS format.
-        
-        Args:
-            seconds: Time in seconds
-            
-        Returns:
-            Formatted time string in MM:SS format
-        """
-        if seconds < 0:
-            seconds = 0
-        
-        minutes = int(seconds // 60)
-        secs = int(seconds % 60)
-        return f"{minutes}:{secs:02d}"
     
     def _calculate_rms(self, audio_data: np.ndarray) -> tuple[float, float]:
         """Calculate RMS levels for left and right channels."""

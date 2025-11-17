@@ -70,25 +70,6 @@ ListItem.--highlight {
     color: #1a1a1a;
 }
 
-ProgressBar {
-    background: #2d2d2d;
-    color: #ff8c00;
-    height: 1;
-}
-
-ProgressBar > .bar--bar {
-    color: #ff8c00;
-    background: #2d2d2d;
-}
-
-ProgressBar > .bar--complete {
-    color: #ff8c00;
-}
-
-ProgressBar > .bar--indeterminate {
-    color: #ffb347;
-}
-
 Container {
     background: #1a1a1a;
 }
@@ -147,21 +128,7 @@ NowPlayingView .track-metadata {
     margin-bottom: 1;
 }
 
-NowPlayingView .progress-container {
-    width: 100%;
-    margin-top: 2;
-}
-
-NowPlayingView ProgressBar {
-    width: 100%;
-}
-
 NowPlayingView .time-display {
-    margin-top: 1;
-}
-
-NowPlayingView .volume-display {
-    color: #ffb347;
     margin-top: 1;
 }
 

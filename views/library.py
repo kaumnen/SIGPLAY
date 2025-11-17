@@ -1,6 +1,9 @@
+import logging
 from textual.app import ComposeResult
 from textual.widgets import ListView, ListItem, Label
 from textual.containers import Container
+
+logger = logging.getLogger(__name__)
 
 
 class LibraryView(Container):
@@ -72,7 +75,8 @@ class LibraryView(Container):
             
             try:
                 label = item.query_one(Label)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Could not query label from list item: {e}")
                 continue
             
             is_selected = (i == event.list_view.index)

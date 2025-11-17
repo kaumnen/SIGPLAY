@@ -3,6 +3,23 @@ from pathlib import Path
 from typing import Dict, Any
 
 
+def format_time(seconds: float) -> str:
+    """Convert seconds to MM:SS format.
+    
+    Args:
+        seconds: Time in seconds
+        
+    Returns:
+        Formatted time string in MM:SS format
+    """
+    if seconds < 0:
+        seconds = 0
+    
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{minutes}:{secs:02d}"
+
+
 @dataclass
 class Track:
     """Represents a music track with metadata."""
@@ -28,6 +45,4 @@ class Track:
     @staticmethod
     def _format_duration(seconds: float) -> str:
         """Convert seconds to MM:SS format."""
-        minutes = int(seconds // 60)
-        secs = int(seconds % 60)
-        return f"{minutes}:{secs:02d}"
+        return format_time(seconds)
