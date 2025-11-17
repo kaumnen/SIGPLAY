@@ -1,66 +1,89 @@
-# Project Structure
+---
+inclusion: always
+---
+
+# Project Structure & Architecture
 
 ## Directory Organization
 
 ```
 sigplay/
-├── .git/                # Version control
-├── .kiro/               # Kiro IDE configuration
-│   ├── specs/           # Feature specifications
-│   └── steering/        # AI assistant guidance rules
-├── .venv/               # Python virtual environment (managed by uv)
-├── main.py              # Application entry point
-├── views/               # View widgets for different screens
-│   ├── library.py       # Music library list view
-│   ├── now_playing.py   # Current track display
-│   └── visualizer.py    # Audio visualization
-├── widgets/             # Reusable UI components
-│   ├── header.py        # ASCII art header
-│   └── footer.py        # Command help footer
-├── styles/              # Textual CSS theme files
-│   └── app.tcss         # Main application styles
-├── models/              # Data models and types
-│   └── track.py         # Track dataclass, ViewState enum
-├── pyproject.toml       # Project metadata and dependencies
-├── uv.lock              # Locked dependency versions
-└── README.md            # Project documentation
+├── main.py              # Entry point: SigplayApp class, global keybindings, view switching
+├── views/               # Screen implementations (library, now_playing, visualizer)
+├── widgets/             # Reusable UI components (header, footer)
+├── services/            # Business logic (audio_player, music_library, spectrum_analyzer)
+├── models/              # Data models (Track, Playback, Frequency dataclasses)
+├── styles/              # Textual CSS files (app.tcss)
+├── pyproject.toml       # Dependencies managed by uv
+└── uv.lock              # Locked dependency versions
 ```
 
-## Architecture Patterns
+## Architecture Rules
+
+### Separation of Concerns
+
+- **main.py**: App lifecycle, global keybindings, view orchestration only
+- **views/**: UI presentation and user interaction handling
+- **services/**: Audio playback, file I/O, signal processing, external library integration
+- **models/**: Data structures with no business logic
+- **widgets/**: Reusable UI components with minimal logic
+- **styles/**: All visual styling (NO inline styles in Python)
 
 ### Component Hierarchy
 
 ```
-SigplayApp (Main App)
-├── Header (Static widget with ASCII art)
-├── ContentSwitcher (View container)
-│   ├── LibraryView (ListView with track list)
-│   ├── NowPlayingView (Container with track info)
-│   └── VisualizerView (Static with animated content)
-└── Footer (Command help display)
+SigplayApp (main.py)
+├── Header (widgets/header.py)
+├── ContentSwitcher
+│   ├── LibraryView (views/library.py)
+│   ├── NowPlayingView (views/now_playing.py)
+│   └── VisualizerView (views/visualizer.py)
+└── Footer (Textual built-in)
 ```
 
-### Key Responsibilities
+### When Creating New Components
 
-- **main.py**: Application lifecycle, global keybindings (Tab, q), view switching logic
-- **views/**: Individual screen implementations with view-specific logic
-- **widgets/**: Reusable components shared across views
-- **styles/**: All visual styling in Textual CSS format
-- **models/**: Data structures (Track, ViewState, AppState)
+- **New view**: Add to `views/` directory, inherit from Textual widget, export in `views/__init__.py`
+- **New widget**: Add to `widgets/` directory if reusable across multiple views
+- **New service**: Add to `services/` directory for business logic, audio processing, or external integrations
+- **New model**: Add to `models/` directory as dataclass with type hints
+- **New styles**: Add to `styles/app.tcss`, use CSS classes not inline styles
 
-## File Naming Conventions
+### Import Conventions
 
-- Snake_case for Python files: `now_playing.py`, `track.py`
-- Lowercase for directories: `views/`, `widgets/`, `styles/`
-- `.tcss` extension for Textual CSS files
-
-## Import Organization
-
-Each package should have an `__init__.py` for clean imports:
+Each package has `__init__.py` for clean imports:
 
 ```python
 # views/__init__.py
 from .library import LibraryView
 from .now_playing import NowPlayingView
 from .visualizer import VisualizerView
+
+# services/__init__.py
+from .audio_player import AudioPlayer
+from .music_library import MusicLibrary
+from .spectrum_analyzer import SpectrumAnalyzer
 ```
+
+Import from package level in other files:
+
+```python
+from views import LibraryView, NowPlayingView
+from services import AudioPlayer, MusicLibrary
+from models import Track, Playback
+```
+
+### File Naming
+
+- Python files: `snake_case.py`
+- Directories: lowercase
+- Textual CSS: `.tcss` extension
+- Classes: `PascalCase`
+- Functions/methods: `snake_case`
+
+### State Management
+
+- Use Textual's reactive variables for UI state
+- Pass services as dependencies to views (dependency injection pattern)
+- Avoid global state except for the main App instance
+- Use dataclasses for structured data passed between components
