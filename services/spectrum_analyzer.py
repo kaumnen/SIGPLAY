@@ -1,6 +1,4 @@
 import numpy as np
-import sounddevice as sd
-import threading
 import time
 import logging
 from typing import Optional
@@ -12,7 +10,7 @@ logger = logging.getLogger(__name__)
 class SpectrumAnalyzer:
     """Real-time audio spectrum analyzer using FFT.
     
-    Captures audio samples from the system audio output, performs FFT analysis,
+    Receives audio samples from AudioPlayer, performs FFT analysis,
     and maps frequency bins to bass, mid, and high ranges for visualization.
     
     Attributes:
@@ -34,9 +32,6 @@ class SpectrumAnalyzer:
         self.buffer_size = buffer_size
         self.config = config or VisualizerConfig()
         
-        self._audio_buffer = np.zeros(buffer_size, dtype=np.float32)
-        self._buffer_lock = threading.Lock()
-        self._stream: Optional[sd.InputStream] = None
         self._is_active = False
         
         self._previous_bands: Optional[FrequencyBands] = None
@@ -62,89 +57,18 @@ class SpectrumAnalyzer:
         end_bin = int(freq_max / self._freq_resolution)
         return (start_bin, end_bin)
     
-    def _audio_callback(self, indata: np.ndarray, frames: int, 
-                       time_info: dict, status: sd.CallbackFlags) -> None:
-        """Callback function for audio stream.
-        
-        Args:
-            indata: Input audio data
-            frames: Number of frames
-            time_info: Timing information
-            status: Stream status flags
-        """
-        if status:
-            logger.warning(f"Audio callback status: {status}")
-        
-        with self._buffer_lock:
-            if indata.shape[1] > 1:
-                self._audio_buffer = indata[:, 0].flatten()
-            else:
-                self._audio_buffer = indata.flatten()
-    
     def start(self) -> None:
-        """Start capturing and analyzing audio.
-        
-        Raises:
-            RuntimeError: If audio capture cannot be started
-        """
+        """Start analyzing audio."""
         if self._is_active:
             return
         
-        try:
-            self._stream = sd.InputStream(
-                samplerate=self.sample_rate,
-                blocksize=self.buffer_size,
-                channels=1,
-                callback=self._audio_callback,
-                dtype=np.float32
-            )
-            self._stream.start()
-            self._is_active = True
-            logger.info(f"Spectrum analyzer started (sample_rate={self.sample_rate}, buffer_size={self.buffer_size})")
-            
-        except sd.PortAudioError as e:
-            error_msg = str(e).lower()
-            
-            if "device" in error_msg or "not found" in error_msg:
-                logger.error("Audio loopback device not available. Please configure system audio routing.")
-                raise RuntimeError(
-                    "Audio capture device not available. "
-                    "Please ensure your system supports audio loopback or configure virtual audio routing."
-                ) from e
-            
-            elif "permission" in error_msg or "access" in error_msg:
-                import platform
-                system = platform.system()
-                
-                if system == "Darwin":
-                    guidance = "On macOS, grant microphone permissions in System Preferences > Security & Privacy > Privacy > Microphone"
-                elif system == "Linux":
-                    guidance = "On Linux, ensure your user is in the 'audio' group and PulseAudio/PipeWire is configured correctly"
-                elif system == "Windows":
-                    guidance = "On Windows, grant microphone permissions in Settings > Privacy > Microphone"
-                else:
-                    guidance = "Please check your system's audio permissions"
-                
-                logger.error(f"Audio permission denied. {guidance}")
-                raise RuntimeError(f"Audio capture permission denied. {guidance}") from e
-            
-            else:
-                logger.error(f"Failed to start audio capture: {e}")
-                raise RuntimeError(f"Failed to start audio capture: {e}") from e
-        
-        except Exception as e:
-            logger.error(f"Unexpected error starting spectrum analyzer: {e}")
-            raise RuntimeError(f"Failed to initialize spectrum analyzer: {e}") from e
+        self._is_active = True
+        logger.info(f"Spectrum analyzer started (sample_rate={self.sample_rate}, buffer_size={self.buffer_size})")
     
     def stop(self) -> None:
-        """Stop audio capture and analysis."""
+        """Stop audio analysis."""
         if not self._is_active:
             return
-        
-        if self._stream:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
         
         self._is_active = False
         logger.info("Spectrum analyzer stopped")
@@ -243,14 +167,34 @@ class SpectrumAnalyzer:
         self._previous_bands = smoothed_bands
         return smoothed_bands
     
-    def get_frequency_bands(self) -> FrequencyBands:
+    def get_frequency_bands(self, audio_buffer: Optional[np.ndarray] = None) -> FrequencyBands:
         """Get current frequency band amplitudes.
+        
+        Args:
+            audio_buffer: Audio samples to analyze (int16 format from miniaudio)
         
         Returns:
             FrequencyBands object with bass, mid, high arrays
         """
-        with self._buffer_lock:
-            audio_data = self._audio_buffer.copy()
+        if audio_buffer is None or len(audio_buffer) == 0:
+            return FrequencyBands(
+                bass=np.zeros(self._bass_bins[1] - self._bass_bins[0]),
+                mid=np.zeros(self._mid_bins[1] - self._mid_bins[0]),
+                high=np.zeros(self._high_bins[1] - self._high_bins[0]),
+                timestamp=time.time()
+            )
+        
+        if len(audio_buffer) > 1:
+            audio_data = audio_buffer[::audio_buffer.shape[0] // self.buffer_size] if len(audio_buffer) > self.buffer_size else audio_buffer
+        else:
+            audio_data = audio_buffer
+        
+        if len(audio_data) < self.buffer_size:
+            audio_data = np.pad(audio_data, (0, self.buffer_size - len(audio_data)))
+        elif len(audio_data) > self.buffer_size:
+            audio_data = audio_data[:self.buffer_size]
+        
+        audio_data = audio_data.astype(np.float32) / 32768.0
         
         fft_magnitude = self._compute_fft(audio_data)
         

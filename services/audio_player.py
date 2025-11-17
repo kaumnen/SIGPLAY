@@ -1,5 +1,7 @@
-import pygame.mixer
+import miniaudio
 import time
+import threading
+import numpy as np
 from typing import Optional, List
 from pathlib import Path
 import logging
@@ -24,11 +26,6 @@ class AudioPlayer:
         if not hasattr(self, '_initialized'):
             try:
                 logger.info("Initializing audio player...")
-                pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
-                
-                if not pygame.mixer.get_init():
-                    logger.error("pygame.mixer.get_init() returned None")
-                    raise RuntimeError("Audio device initialization failed")
                 
                 self._current_track: Optional[Track] = None
                 self._playlist: List[Track] = []
@@ -38,12 +35,19 @@ class AudioPlayer:
                 self._start_time: float = 0
                 self._pause_position: float = 0
                 
-                pygame.mixer.music.set_volume(self._volume)
+                self._device: Optional[miniaudio.PlaybackDevice] = None
+                self._stream_generator = None
+                self._stop_playback = threading.Event()
+                self._pause_event = threading.Event()
+                
+                self._audio_buffer_lock = threading.Lock()
+                self._latest_audio_buffer: Optional[np.ndarray] = None
+                
                 self._initialized = True
                 
                 logger.info("Audio player initialized successfully")
                 
-            except (pygame.error, RuntimeError) as e:
+            except Exception as e:
                 error_msg = str(e) if str(e) else "Unknown audio error"
                 logger.critical(f"Failed to initialize audio device: {error_msg}")
                 raise RuntimeError(
@@ -78,9 +82,52 @@ class AudioPlayer:
             )
         
         try:
+            self.stop()
+            
             logger.info(f"Loading track: {track.title} by {track.artist}")
-            pygame.mixer.music.load(str(file_path))
-            pygame.mixer.music.play()
+            
+            self._stream_generator = miniaudio.stream_file(
+                str(file_path),
+                output_format=miniaudio.SampleFormat.SIGNED16,
+                nchannels=2,
+                sample_rate=44100
+            )
+            
+            def audio_generator():
+                num_frames = yield b''
+                
+                while not self._stop_playback.is_set():
+                    if self._pause_event.is_set():
+                        num_frames = yield b'\x00' * (num_frames * 2 * 2)
+                        continue
+                    
+                    try:
+                        audio_data = self._stream_generator.send(num_frames)
+                        
+                        audio_array = np.frombuffer(audio_data, dtype=np.int16)
+                        
+                        with self._audio_buffer_lock:
+                            self._latest_audio_buffer = audio_array.copy()
+                        
+                        volume_adjusted = (audio_array * self._volume).astype(np.int16)
+                        
+                        num_frames = yield volume_adjusted.tobytes()
+                        
+                    except StopIteration:
+                        logger.debug("Reached end of audio file")
+                        self._state = PlaybackState.STOPPED
+                        num_frames = yield b'\x00' * (num_frames * 2 * 2)
+                        break
+            
+            self._device = miniaudio.PlaybackDevice(
+                sample_rate=44100,
+                nchannels=2,
+                output_format=miniaudio.SampleFormat.SIGNED16
+            )
+            
+            gen = audio_generator()
+            next(gen)
+            self._device.start(gen)
             
             self._current_track = track
             self._state = PlaybackState.PLAYING
@@ -90,10 +137,13 @@ class AudioPlayer:
             if self._playlist and track in self._playlist:
                 self._current_index = self._playlist.index(track)
             
+            self._stop_playback.clear()
+            self._pause_event.clear()
+            
             logger.debug(f"Successfully started playback of {track.title}")
             
-        except pygame.error as e:
-            logger.error(f"pygame error loading {file_path}: {e}")
+        except miniaudio.MiniaudioError as e:
+            logger.error(f"miniaudio error loading {file_path}: {e}")
             self._state = PlaybackState.STOPPED
             self._current_track = None
             raise RuntimeError(
@@ -112,20 +162,30 @@ class AudioPlayer:
     def pause(self) -> None:
         """Pause playback."""
         if self._state == PlaybackState.PLAYING:
-            pygame.mixer.music.pause()
+            self._pause_event.set()
             self._state = PlaybackState.PAUSED
             self._pause_position = time.time() - self._start_time
     
     def resume(self) -> None:
         """Resume playback from paused state."""
         if self._state == PlaybackState.PAUSED:
-            pygame.mixer.music.unpause()
+            self._pause_event.clear()
             self._state = PlaybackState.PLAYING
             self._start_time = time.time() - self._pause_position
     
     def stop(self) -> None:
         """Stop playback and reset position."""
-        pygame.mixer.music.stop()
+        self._stop_playback.set()
+        
+        if self._device:
+            try:
+                self._device.stop()
+                self._device.close()
+            except Exception as e:
+                logger.debug(f"Error stopping device: {e}")
+            self._device = None
+        
+        self._stream_generator = None
         self._state = PlaybackState.STOPPED
         self._start_time = 0
         self._pause_position = 0
@@ -182,7 +242,6 @@ class AudioPlayer:
     def set_volume(self, level: float) -> None:
         """Set volume level (0.0 to 1.0)."""
         self._volume = max(0.0, min(1.0, level))
-        pygame.mixer.music.set_volume(self._volume)
     
     def increase_volume(self, amount: float = 0.05) -> None:
         """Increase volume by specified amount."""
@@ -227,19 +286,28 @@ class AudioPlayer:
         """Return current playlist."""
         return self._playlist
     
-    def list_audio_devices(self) -> List[str]:
-        """List available audio output devices.
+    def get_latest_audio_buffer(self) -> Optional[np.ndarray]:
+        """Get the most recent audio buffer.
         
-        Currently returns system default only.
-        TODO: Integrate sounddevice library for full device enumeration.
+        Returns:
+            Numpy array of audio samples or None if no audio playing
         """
-        return ["System Default"]
+        with self._audio_buffer_lock:
+            return self._latest_audio_buffer.copy() if self._latest_audio_buffer is not None else None
+    
+    def list_audio_devices(self) -> List[str]:
+        """List available audio output devices."""
+        try:
+            devices = miniaudio.Devices()
+            return [device['name'] for device in devices.get_playbacks()]
+        except Exception as e:
+            logger.error(f"Error listing audio devices: {e}")
+            return ["System Default"]
     
     def set_audio_device(self, device_name: str) -> None:
         """Set audio output device.
         
         Currently a stub for future implementation.
-        TODO: Integrate sounddevice library for device selection.
         TODO: Implement device switching without interrupting playback.
         """
         pass

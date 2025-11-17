@@ -1,11 +1,7 @@
-import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
-
 from textual.app import App, ComposeResult
 from textual.widgets import Footer
 from textual.containers import Horizontal, Vertical
 from textual.binding import Binding
-import pygame.mixer
 import asyncio
 import logging
 from pathlib import Path
@@ -152,7 +148,7 @@ class SigplayApp(App):
         Handles errors during auto-advance gracefully.
         """
         try:
-            if self.audio_player.is_playing() and not pygame.mixer.music.get_busy():
+            if self.audio_player.get_state().name == "STOPPED" and self.audio_player.get_current_track():
                 logger.debug("Track ended, advancing to next")
                 self.audio_player.next_track()
         except Exception as e:

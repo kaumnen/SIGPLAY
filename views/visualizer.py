@@ -46,10 +46,7 @@ class VisualizerView(Container):
         yield Static(self._render_baseline_only(), id="visualizer-content")
     
     def on_mount(self) -> None:
-        try:
-            self.spectrum_analyzer.start()
-        except RuntimeError:
-            pass
+        self.spectrum_analyzer.start()
         
         update_interval = 1.0 / self._current_update_rate
         self.animation_timer = self.set_interval(update_interval, self._update_visualization)
@@ -268,7 +265,8 @@ class VisualizerView(Container):
         """Update visualization based on playback state."""
         try:
             if self.audio_player.is_playing() and self.spectrum_analyzer.is_active():
-                bands = self.spectrum_analyzer.get_frequency_bands()
+                audio_buffer = self.audio_player.get_latest_audio_buffer()
+                bands = self.spectrum_analyzer.get_frequency_bands(audio_buffer)
                 visualization = self._render_bars(bands)
             else:
                 visualization = self._render_baseline_only()
