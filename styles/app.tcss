@@ -83,3 +83,81 @@ Static {
     background: transparent;
     color: #fff8dc;
 }
+
+LibraryView {
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+}
+
+LibraryView > Label {
+    color: #ff8c00;
+    text-style: bold;
+    padding: 0 0 1 0;
+}
+
+NowPlayingView {
+    align: center middle;
+}
+
+NowPlayingView Vertical {
+    width: 80%;
+    height: auto;
+    align: center middle;
+}
+
+NowPlayingView Static {
+    text-align: center;
+}
+
+NowPlayingView .music-icon {
+    color: #ff8c00;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+NowPlayingView .track-title {
+    color: #ff8c00;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+NowPlayingView .track-metadata {
+    color: #ffb347;
+    margin-bottom: 1;
+}
+
+NowPlayingView .progress-container {
+    width: 100%;
+    margin-top: 2;
+}
+
+NowPlayingView ProgressBar {
+    width: 100%;
+}
+
+NowPlayingView .time-display {
+    margin-top: 1;
+}
+
+NowPlayingView .volume-display {
+    color: #ffb347;
+    margin-top: 1;
+}
+
+NowPlayingView .state-display {
+    color: #ff8c00;
+    margin-top: 1;
+}
+
+VisualizerView {
+    align: center middle;
+}
+
+#visualizer-content {
+    width: 80;
+    height: 20;
+    content-align: center middle;
+    color: #ff8c00;
+    text-style: bold;
+}

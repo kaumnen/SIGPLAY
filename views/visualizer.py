@@ -5,20 +5,6 @@ from textual.widgets import Static
 
 
 class VisualizerView(Container):
-    DEFAULT_CSS = """
-    VisualizerView {
-        align: center middle;
-        background: $surface;
-    }
-    
-    #visualizer-content {
-        width: 80;
-        height: 20;
-        content-align: center middle;
-        color: $accent;
-        text-style: bold;
-    }
-    """
     
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

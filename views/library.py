@@ -6,20 +6,6 @@ from textual.containers import Container
 class LibraryView(Container):
     """Library view displaying a list of music tracks with vim navigation."""
     
-    DEFAULT_CSS = """
-    LibraryView {
-        background: #1a1a1a;
-        border: solid #ff8c00;
-        padding: 1;
-    }
-    
-    LibraryView > Label {
-        color: #ff8c00;
-        text-style: bold;
-        padding: 0 0 1 0;
-    }
-    """
-    
     BINDINGS = [
         ("j", "move_down", "Move down"),
         ("k", "move_up", "Move up"),

@@ -7,65 +7,6 @@ from services.audio_player import AudioPlayer
 class NowPlayingView(Container):
     """Widget displaying currently playing track information."""
 
-    DEFAULT_CSS = """
-    NowPlayingView {
-        align: center middle;
-    }
-
-    NowPlayingView Vertical {
-        width: 80%;
-        height: auto;
-        align: center middle;
-    }
-
-    NowPlayingView .music-icon {
-        text-align: center;
-        color: #ff8c00;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    NowPlayingView .track-title {
-        text-align: center;
-        color: #ff8c00;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    NowPlayingView .track-metadata {
-        text-align: center;
-        color: #ffb347;
-        margin-bottom: 1;
-    }
-
-    NowPlayingView .progress-container {
-        width: 100%;
-        margin-top: 2;
-    }
-
-    NowPlayingView ProgressBar {
-        width: 100%;
-    }
-
-    NowPlayingView .time-display {
-        text-align: center;
-        color: #fff8dc;
-        margin-top: 1;
-    }
-
-    NowPlayingView .volume-display {
-        text-align: center;
-        color: #ffb347;
-        margin-top: 1;
-    }
-
-    NowPlayingView .state-display {
-        text-align: center;
-        color: #ff8c00;
-        margin-top: 1;
-    }
-    """
-
     def __init__(self, audio_player: AudioPlayer, **kwargs):
         """Initialize NowPlayingView with audio player reference."""
         super().__init__(**kwargs)
