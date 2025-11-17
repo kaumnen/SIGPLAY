@@ -2,6 +2,7 @@ import numpy as np
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Static
+from textual.reactive import var
 from rich.text import Text
 
 from services.audio_player import AudioPlayer
@@ -10,6 +11,8 @@ from models.frequency import FrequencyBands, VisualizerConfig
 
 
 class VisualizerView(Container):
+    
+    terminal_width = var(0)
     
     def __init__(self, audio_player: AudioPlayer, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -32,14 +35,35 @@ class VisualizerView(Container):
     def on_mount(self) -> None:
         try:
             self.spectrum_analyzer.start()
-        except RuntimeError as e:
+        except RuntimeError:
             pass
         
         update_interval = 1.0 / self.config.update_rate
         self.animation_timer = self.set_interval(update_interval, self._update_visualization)
+        
+        self.terminal_width = self.size.width
     
     def on_unmount(self) -> None:
         self.spectrum_analyzer.stop()
+    
+    def watch_terminal_width(self, new_width: int) -> None:
+        """React to terminal width changes and recalculate bar count.
+        
+        Ensures minimum of 20 bars and maximum based on available width.
+        Re-renders visualization with new bar count.
+        
+        Args:
+            new_width: New terminal width in characters
+        """
+        if new_width <= 0:
+            return
+        
+        self.bar_count = max(20, min(new_width - 4, 120))
+        self._calculate_bar_counts()
+    
+    def on_resize(self) -> None:
+        """Handle terminal resize events."""
+        self.terminal_width = self.size.width
     
     def _calculate_bar_counts(self) -> None:
         """Calculate how many bars represent each frequency range.

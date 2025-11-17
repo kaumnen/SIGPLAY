@@ -124,7 +124,7 @@
   - Test color assignment for high range bars
   - Test color boundaries between frequency ranges
 
-- [ ] 7. Implement terminal resize handling
+- [x] 7. Implement terminal resize handling
   - Add watch for terminal size changes in VisualizerView
   - Recalculate bar_count based on new terminal width
   - Ensure minimum of 20 bars and maximum based on width
