@@ -2,6 +2,7 @@ import numpy as np
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Static
+from rich.text import Text
 
 from services.audio_player import AudioPlayer
 from services.spectrum_analyzer import SpectrumAnalyzer
@@ -22,6 +23,8 @@ class VisualizerView(Container):
         self.bar_count = self.config.bar_count
         self.max_bar_height = self.config.max_bar_height
         self.animation_timer = None
+        
+        self._calculate_bar_counts()
     
     def compose(self) -> ComposeResult:
         yield Static(self._render_baseline_only(), id="visualizer-content")
@@ -38,14 +41,58 @@ class VisualizerView(Container):
     def on_unmount(self) -> None:
         self.spectrum_analyzer.stop()
     
-    def _render_bars(self, bands: FrequencyBands) -> str:
-        """Render frequency bars with baseline.
+    def _calculate_bar_counts(self) -> None:
+        """Calculate how many bars represent each frequency range.
+        
+        Distributes bars proportionally based on the number of frequency bins
+        in each range (bass, mid, high).
+        """
+        bass_bin_count = self.spectrum_analyzer._bass_bins[1] - self.spectrum_analyzer._bass_bins[0]
+        mid_bin_count = self.spectrum_analyzer._mid_bins[1] - self.spectrum_analyzer._mid_bins[0]
+        high_bin_count = self.spectrum_analyzer._high_bins[1] - self.spectrum_analyzer._high_bins[0]
+        
+        total_bins = bass_bin_count + mid_bin_count + high_bin_count
+        
+        self.bass_bar_count = int((bass_bin_count / total_bins) * self.bar_count)
+        self.mid_bar_count = int((mid_bin_count / total_bins) * self.bar_count)
+        self.high_bar_count = self.bar_count - self.bass_bar_count - self.mid_bar_count
+    
+    def _apply_frequency_colors(self, bar_line: str) -> Text:
+        """Apply color gradient based on frequency range.
+        
+        Colors bars according to their frequency range:
+        - Bass (darker orange): #cc5500
+        - Mid (medium orange): #ff8c00
+        - High (lighter amber): #ffb347
+        
+        Args:
+            bar_line: String of bar characters to colorize
+            
+        Returns:
+            Rich Text object with colored bars
+        """
+        text = Text()
+        
+        for i, char in enumerate(bar_line):
+            if i < self.bass_bar_count:
+                color = "#cc5500"
+            elif i < self.bass_bar_count + self.mid_bar_count:
+                color = "#ff8c00"
+            else:
+                color = "#ffb347"
+            
+            text.append(char, style=color)
+        
+        return text
+    
+    def _render_bars(self, bands: FrequencyBands) -> Text:
+        """Render frequency bars with baseline and color gradients.
         
         Args:
             bands: Frequency band amplitudes
             
         Returns:
-            String representation of visualization
+            Rich Text representation of visualization with colors
         """
         all_amplitudes = bands.get_all_bands()
         
@@ -57,7 +104,8 @@ class VisualizerView(Container):
         
         bar_heights = (bar_amplitudes * self.max_bar_height).astype(int)
         
-        lines = []
+        result = Text()
+        
         for row in range(self.max_bar_height, 0, -1):
             line = ""
             for height in bar_heights:
@@ -65,28 +113,34 @@ class VisualizerView(Container):
                     line += "█"
                 else:
                     line += " "
-            lines.append(line)
+            
+            colored_line = self._apply_frequency_colors(line)
+            result.append_text(colored_line)
+            result.append("\n")
         
         baseline = "─" * self.bar_count
-        lines.append(baseline)
+        colored_baseline = self._apply_frequency_colors(baseline)
+        result.append_text(colored_baseline)
         
-        return "\n".join(lines)
+        return result
     
-    def _render_baseline_only(self) -> str:
+    def _render_baseline_only(self) -> Text:
         """Render baseline with minimal bars when not playing.
         
         Returns:
-            String representation of baseline visualization
+            Rich Text representation of baseline visualization with colors
         """
-        lines = []
+        result = Text()
         
         for row in range(self.max_bar_height, 0, -1):
-            lines.append(" " * self.bar_count)
+            result.append(" " * self.bar_count)
+            result.append("\n")
         
         baseline = "─" * self.bar_count
-        lines.append(baseline)
+        colored_baseline = self._apply_frequency_colors(baseline)
+        result.append_text(colored_baseline)
         
-        return "\n".join(lines)
+        return result
     
     def _update_visualization(self) -> None:
         """Update visualization based on playback state."""
