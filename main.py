@@ -9,7 +9,7 @@ from pathlib import Path
 from widgets.header import Header
 from views.library import LibraryView
 from views.now_playing import NowPlayingView
-from views.visualizer import VisualizerView
+from views.meters import MetersView
 from models.track import ViewState
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
@@ -69,7 +69,7 @@ class SigplayApp(App):
                 yield LibraryView(self.music_library, self.audio_player, id="library")
                 yield NowPlayingView(self.audio_player, id="now_playing")
             
-            yield VisualizerView(self.audio_player, id="visualizer")
+            yield MetersView(self.audio_player, id="meters")
         
         yield Footer()
     
@@ -151,6 +151,8 @@ class SigplayApp(App):
             if self.audio_player.get_state().name == "STOPPED" and self.audio_player.get_current_track():
                 logger.debug("Track ended, advancing to next")
                 self.audio_player.next_track()
+                library_view = self.query_one("#library", LibraryView)
+                library_view._update_play_indicator()
         except Exception as e:
             logger.error(f"Error during track auto-advance: {e}")
             self.notify(
@@ -181,6 +183,8 @@ class SigplayApp(App):
         """
         try:
             self.audio_player.next_track()
+            library_view = self.query_one("#library", LibraryView)
+            library_view._update_play_indicator()
         except Exception as e:
             logger.error(f"Error skipping to next track: {e}")
             self.notify(
@@ -196,6 +200,8 @@ class SigplayApp(App):
         """
         try:
             self.audio_player.previous_track()
+            library_view = self.query_one("#library", LibraryView)
+            library_view._update_play_indicator()
         except Exception as e:
             logger.error(f"Error skipping to previous track: {e}")
             self.notify(
