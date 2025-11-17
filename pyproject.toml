@@ -9,6 +9,8 @@ dependencies = [
     "textual-dev>=1.8.0",
     "pygame>=2.6.1",
     "mutagen>=1.47.0",
+    "numpy>=1.26.0",
+    "sounddevice>=0.4.6",
 ]
 
 [project.scripts]

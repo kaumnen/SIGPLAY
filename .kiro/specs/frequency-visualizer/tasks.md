@@ -1,12 +1,12 @@
 # Implementation Plan
 
-- [ ] 1. Add required dependencies for audio analysis
+- [x] 1. Add required dependencies for audio analysis
   - Add numpy>=1.26.0 to pyproject.toml for FFT computation
   - Add sounddevice>=0.4.6 to pyproject.toml for audio capture
   - Run uv sync to install new dependencies
   - _Requirements: 5.1_
 
-- [ ] 2. Create FrequencyBands data model
+- [x] 2. Create FrequencyBands data model
   - Create models/frequency.py file
   - Implement FrequencyBands dataclass with bass, mid, high, timestamp fields
   - Implement get_all_bands() method to concatenate frequency arrays
