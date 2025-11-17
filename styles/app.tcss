@@ -29,9 +29,18 @@ Footer {
     border: solid #cc5500;
 }
 
-ContentSwitcher {
+#main-container {
+    height: 1fr;
     background: #1a1a1a;
-    border: solid #ff8c00;
+}
+
+#top-container {
+    height: 2fr;
+    width: 100%;
+}
+
+Horizontal {
+    height: auto;
 }
 
 ListView {
@@ -85,6 +94,8 @@ Static {
 }
 
 LibraryView {
+    width: 1fr;
+    height: 100%;
     background: #1a1a1a;
     border: solid #ff8c00;
     padding: 1;
@@ -97,7 +108,11 @@ LibraryView > Label {
 }
 
 NowPlayingView {
+    width: 1fr;
+    height: 100%;
     align: center middle;
+    border: solid #ff8c00;
+    margin-left: 1;
 }
 
 NowPlayingView Vertical {
@@ -151,12 +166,16 @@ NowPlayingView .state-display {
 }
 
 VisualizerView {
+    width: 100%;
+    height: 1fr;
     align: center middle;
+    border: solid #ff8c00;
+    margin-top: 1;
 }
 
 #visualizer-content {
-    width: 80;
-    height: 20;
+    width: 100%;
+    height: 100%;
     content-align: center middle;
     color: #ff8c00;
     text-style: bold;

@@ -116,10 +116,6 @@ class LibraryView(Container):
             self.audio_player.play(track)
             self._update_play_indicator()
             
-            from textual.widgets import ContentSwitcher
-            switcher = self.app.query_one(ContentSwitcher)
-            switcher.current = "now_playing"
-            
         except FileNotFoundError:
             self.app.notify(
                 f"❌ File not found: {track.title}\n\nThe file may have been moved or deleted.",

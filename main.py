@@ -2,7 +2,8 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, ContentSwitcher
+from textual.widgets import Footer
+from textual.containers import Horizontal, Vertical
 from textual.binding import Binding
 import pygame.mixer
 import asyncio
@@ -39,7 +40,6 @@ class SigplayApp(App):
     
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True),
-        Binding("tab", "cycle_view", "Switch View", priority=True),
         Binding("space", "play_pause", "Play/Pause"),
         Binding("s", "stop", "Stop"),
         Binding("n", "next_track", "Next"),
@@ -52,8 +52,6 @@ class SigplayApp(App):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.current_view = ViewState.LIBRARY
-        self.view_order = [ViewState.LIBRARY, ViewState.NOW_PLAYING, ViewState.VISUALIZER]
         
         logger.info("Starting SIGPLAY application")
         
@@ -70,19 +68,19 @@ class SigplayApp(App):
         """Compose the main application layout."""
         yield Header()
         
-        with ContentSwitcher(initial="library"):
-            yield LibraryView(self.music_library, self.audio_player, id="library")
-            yield NowPlayingView(self.audio_player, id="now_playing")
+        with Vertical(id="main-container"):
+            with Horizontal(id="top-container"):
+                yield LibraryView(self.music_library, self.audio_player, id="library")
+                yield NowPlayingView(self.audio_player, id="now_playing")
+            
             yield VisualizerView(id="visualizer")
         
         yield Footer()
     
     def on_mount(self) -> None:
-        """Initialize the application with the default view."""
-        self.current_view = ViewState.LIBRARY
-        switcher = self.query_one(ContentSwitcher)
-        switcher.current = "library"
-        self._update_footer()
+        """Initialize the application."""
+        library_view = self.query_one("#library", LibraryView)
+        library_view.focus()
         
         self.run_worker(self._scan_library, exclusive=True)
         self.set_interval(0.5, self._check_track_end)
@@ -169,21 +167,6 @@ class SigplayApp(App):
         """Handle quit action for clean shutdown."""
         self.exit()
     
-    def action_cycle_view(self) -> None:
-        """Cycle to the next view in sequence."""
-        current_index = self.view_order.index(self.current_view)
-        next_index = (current_index + 1) % len(self.view_order)
-        self.current_view = self.view_order[next_index]
-        
-        switcher = self.query_one(ContentSwitcher)
-        switcher.current = self.current_view.value
-        
-        self._update_footer()
-        
-        if self.current_view == ViewState.LIBRARY:
-            library_view = self.query_one("#library", LibraryView)
-            library_view.focus()
-    
     def action_play_pause(self) -> None:
         """Toggle play/pause state."""
         if self.audio_player.is_playing():
@@ -236,17 +219,6 @@ class SigplayApp(App):
     def action_select_device(self) -> None:
         """Select audio output device (stub for future feature)."""
         self.notify("Audio device selection coming soon!", severity="information")
-    
-    def _update_footer(self) -> None:
-        """Update footer to display current view and keyboard shortcuts."""
-        view_names = {
-            ViewState.LIBRARY: "Library",
-            ViewState.NOW_PLAYING: "Now Playing",
-            ViewState.VISUALIZER: "Visualizer"
-        }
-        
-        current_view_name = view_names.get(self.current_view, "Unknown")
-        self.sub_title = f"View: {current_view_name}"
 
 
 def main():
