@@ -1,7 +1,7 @@
 import numpy as np
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical
-from textual.widgets import Static, ProgressBar
+from textual.widgets import Static
 from rich.text import Text
 from services.audio_player import AudioPlayer
 
@@ -20,7 +20,7 @@ class NowPlayingView(Container):
         self.vu_peak_decay = 0.95
 
     def compose(self) -> ComposeResult:
-        """Compose the now playing view with track info and progress bar."""
+        """Compose the now playing view with track info."""
         with Vertical():
             yield Static("♪", classes="music-icon")
             yield Static("No track playing", id="np-title", classes="track-title")
@@ -28,9 +28,8 @@ class NowPlayingView(Container):
             yield Static("Album: Unknown", id="np-album", classes="track-metadata")
             
             with Container(classes="progress-container"):
-                yield ProgressBar(total=100, show_eta=False, id="np-progress")
                 yield Static("0:00 / 0:00", id="np-time", classes="time-display")
-                yield Static("Volume: 70%", id="np-volume", classes="volume-display")
+                yield Static(self._render_volume_bar(0.7), id="np-volume", classes="volume-display")
                 yield Static("State: Stopped", id="np-state", classes="state-display")
             
             yield Static(self._render_vu_meters(0.0, 0.0), id="np-vu-meters")
@@ -64,14 +63,6 @@ class NowPlayingView(Container):
             total_time_str = self._format_time(total_duration)
             time_widget = self.query_one("#np-time", Static)
             time_widget.update(f"{current_time_str} / {total_time_str}")
-            
-            progress_bar = self.query_one("#np-progress", ProgressBar)
-            if total_duration > 0:
-                percentage = (current_position / total_duration) * 100
-                percentage = min(100, max(0, percentage))
-                progress_bar.update(progress=percentage)
-            else:
-                progress_bar.update(progress=0)
         else:
             title_widget = self.query_one("#np-title", Static)
             title_widget.update("No track playing")
@@ -84,15 +75,46 @@ class NowPlayingView(Container):
             
             time_widget = self.query_one("#np-time", Static)
             time_widget.update("0:00 / 0:00")
-            
-            progress_bar = self.query_one("#np-progress", ProgressBar)
-            progress_bar.update(progress=0)
         
         volume_widget = self.query_one("#np-volume", Static)
-        volume_widget.update(f"Volume: {int(volume_level * 100)}%")
+        volume_widget.update(self._render_volume_bar(volume_level))
         
         state_widget = self.query_one("#np-state", Static)
         state_widget.update(f"State: {playback_state.value.capitalize()}")
+    
+    def _render_volume_bar(self, volume_level: float) -> Text:
+        """Render a visual volume bar.
+        
+        Args:
+            volume_level: Volume level from 0.0 to 1.0
+            
+        Returns:
+            Rich Text object with volume bar visualization
+        """
+        result = Text()
+        
+        bar_width = 30
+        filled_bars = int(volume_level * bar_width)
+        percentage = int(volume_level * 100)
+        
+        result.append("Volume: ", style="#888888")
+        result.append("│", style="#888888")
+        
+        for i in range(bar_width):
+            if i < filled_bars:
+                if i < bar_width * 0.5:
+                    result.append("█", style="#cc5500")
+                elif i < bar_width * 0.75:
+                    result.append("█", style="#ff8c00")
+                else:
+                    result.append("█", style="#ffb347")
+            else:
+                result.append("─", style="#333333")
+        
+        result.append("│ ", style="#888888")
+        result.append(f"{percentage}%", style="#ff8c00 bold")
+        
+        return result
     
     def _format_time(self, seconds: float) -> str:
         """Convert seconds to MM:SS format.

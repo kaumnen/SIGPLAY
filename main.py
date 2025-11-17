@@ -212,10 +212,21 @@ class SigplayApp(App):
     def action_volume_up(self) -> None:
         """Increase volume."""
         self.audio_player.increase_volume()
+        volume_pct = int(self.audio_player.get_volume() * 100)
+        self.notify(f"🔊 Volume ▲ {volume_pct}%", timeout=1.5)
+        
+        now_playing = self.query_one("#now_playing", NowPlayingView)
+        now_playing._update_progress()
     
     def action_volume_down(self) -> None:
         """Decrease volume."""
         self.audio_player.decrease_volume()
+        volume_pct = int(self.audio_player.get_volume() * 100)
+        mute_icon = "🔇" if volume_pct == 0 else "🔉"
+        self.notify(f"{mute_icon} Volume ▼ {volume_pct}%", timeout=1.5)
+        
+        now_playing = self.query_one("#now_playing", NowPlayingView)
+        now_playing._update_progress()
     
     def action_select_device(self) -> None:
         """Select audio output device (stub for future feature)."""
