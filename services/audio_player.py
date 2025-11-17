@@ -33,7 +33,7 @@ class AudioPlayer:
                 self._current_track: Optional[Track] = None
                 self._playlist: List[Track] = []
                 self._current_index: int = -1
-                self._volume: float = 0.7
+                self._volume: float = 0.3
                 self._state: PlaybackState = PlaybackState.STOPPED
                 self._start_time: float = 0
                 self._pause_position: float = 0
