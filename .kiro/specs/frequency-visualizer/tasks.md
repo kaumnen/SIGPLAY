@@ -23,21 +23,21 @@
   - Provide sensible defaults (20 FPS, 60 bars, 20 height, standard frequency ranges)
   - _Requirements: 1.4, 6.1, 6.2_
 
-- [ ] 4. Implement SpectrumAnalyzer core class
+- [x] 4. Implement SpectrumAnalyzer core class
   - Create services/spectrum_analyzer.py file
   - Implement SpectrumAnalyzer class with __init__, start, stop, get_frequency_bands, is_active methods
   - Set up audio capture using sounddevice with loopback configuration
   - Implement audio buffer storage with thread-safe access
   - _Requirements: 3.1, 3.2, 4.3, 4.4_
 
-- [ ] 4.1 Implement FFT analysis in SpectrumAnalyzer
+- [x] 4.1 Implement FFT analysis in SpectrumAnalyzer
   - Import numpy.fft for FFT computation
   - Apply Hann window to audio buffer before FFT
   - Compute FFT using numpy.fft.rfft()
   - Calculate frequency resolution based on sample rate and buffer size
   - _Requirements: 3.2, 5.1, 5.3_
 
-- [ ] 4.2 Implement frequency bin mapping
+- [x] 4.2 Implement frequency bin mapping
   - Map FFT bins to bass range (20-250 Hz)
   - Map FFT bins to mid range (250-4000 Hz)
   - Map FFT bins to high range (4000-20000 Hz)
@@ -49,13 +49,13 @@
   - **Property 1: Frequency band coverage**
   - **Validates: Requirements 1.2**
 
-- [ ] 4.3 Implement amplitude normalization and smoothing
+- [x] 4.3 Implement amplitude normalization and smoothing
   - Normalize frequency amplitudes to consistent scale (0-1)
   - Implement exponential moving average for temporal smoothing (alpha=0.3)
   - Handle edge cases: NaN, Inf, zero amplitudes
   - _Requirements: 5.5, 5.3_
 
-- [ ] 4.4 Add error handling for audio capture
+- [x] 4.4 Add error handling for audio capture
   - Handle loopback device not available error with fallback message
   - Handle permission denied errors with platform-specific guidance
   - Handle sample rate mismatches with logging
