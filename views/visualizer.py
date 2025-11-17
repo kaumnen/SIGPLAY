@@ -1,4 +1,7 @@
 import numpy as np
+import time
+import logging
+import psutil
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Static
@@ -7,7 +10,9 @@ from rich.text import Text
 
 from services.audio_player import AudioPlayer
 from services.spectrum_analyzer import SpectrumAnalyzer
-from models.frequency import FrequencyBands, VisualizerConfig
+from models.frequency import FrequencyBands, VisualizerConfig, PerformanceMetrics
+
+logger = logging.getLogger(__name__)
 
 
 class VisualizerView(Container):
@@ -27,6 +32,14 @@ class VisualizerView(Container):
         self.max_bar_height = self.config.max_bar_height
         self.animation_timer = None
         
+        self.performance_metrics = PerformanceMetrics()
+        self._frame_times = []
+        self._last_frame_time = time.time()
+        self._process = psutil.Process()
+        self._cpu_check_interval = 1.0
+        self._last_cpu_check = time.time()
+        self._current_update_rate = self.config.update_rate
+        
         self._calculate_bar_counts()
     
     def compose(self) -> ComposeResult:
@@ -38,10 +51,12 @@ class VisualizerView(Container):
         except RuntimeError:
             pass
         
-        update_interval = 1.0 / self.config.update_rate
+        update_interval = 1.0 / self._current_update_rate
         self.animation_timer = self.set_interval(update_interval, self._update_visualization)
         
         self.terminal_width = self.size.width
+        
+        self.set_interval(self._cpu_check_interval, self._monitor_performance)
     
     def on_unmount(self) -> None:
         self.spectrum_analyzer.stop()
@@ -166,13 +181,103 @@ class VisualizerView(Container):
         
         return result
     
+    def _measure_frame_time(self) -> float:
+        """Measure time taken for current frame.
+        
+        Returns:
+            Frame processing time in seconds
+        """
+        current_time = time.time()
+        frame_time = current_time - self._last_frame_time
+        self._last_frame_time = current_time
+        
+        self._frame_times.append(frame_time)
+        if len(self._frame_times) > 30:
+            self._frame_times.pop(0)
+        
+        return frame_time
+    
+    def _calculate_frame_rate(self) -> float:
+        """Calculate current frame rate from recent frame times.
+        
+        Returns:
+            Current frames per second
+        """
+        if not self._frame_times:
+            return 0.0
+        
+        avg_frame_time = sum(self._frame_times) / len(self._frame_times)
+        if avg_frame_time > 0:
+            return 1.0 / avg_frame_time
+        return 0.0
+    
+    def _monitor_performance(self) -> None:
+        """Monitor CPU usage and adjust frame rate if needed.
+        
+        Checks CPU usage and reduces frame rate if it exceeds 20%.
+        Logs performance metrics for monitoring.
+        """
+        try:
+            cpu_percent = self._process.cpu_percent(interval=None)
+            
+            self.performance_metrics.cpu_percent = cpu_percent
+            self.performance_metrics.frame_rate = self._calculate_frame_rate()
+            self.performance_metrics.last_update = time.time()
+            
+            if cpu_percent > 20.0 and self._current_update_rate > 15:
+                old_rate = self._current_update_rate
+                self._current_update_rate = max(15, self._current_update_rate - 5)
+                
+                if self.animation_timer:
+                    self.animation_timer.stop()
+                
+                update_interval = 1.0 / self._current_update_rate
+                self.animation_timer = self.set_interval(update_interval, self._update_visualization)
+                
+                logger.warning(
+                    f"High CPU usage detected ({cpu_percent:.1f}%). "
+                    f"Reducing frame rate from {old_rate} to {self._current_update_rate} FPS"
+                )
+            
+            elif cpu_percent < 10.0 and self._current_update_rate < self.config.update_rate:
+                old_rate = self._current_update_rate
+                self._current_update_rate = min(self.config.update_rate, self._current_update_rate + 5)
+                
+                if self.animation_timer:
+                    self.animation_timer.stop()
+                
+                update_interval = 1.0 / self._current_update_rate
+                self.animation_timer = self.set_interval(update_interval, self._update_visualization)
+                
+                logger.info(
+                    f"CPU usage normalized ({cpu_percent:.1f}%). "
+                    f"Increasing frame rate from {old_rate} to {self._current_update_rate} FPS"
+                )
+            
+            if self.performance_metrics.frame_rate < 15 or self.performance_metrics.frame_rate > 30:
+                logger.debug(
+                    f"Performance metrics - CPU: {cpu_percent:.1f}%, "
+                    f"FPS: {self.performance_metrics.frame_rate:.1f}, "
+                    f"Target: {self._current_update_rate}"
+                )
+            
+        except Exception as e:
+            logger.error(f"Error monitoring performance: {e}")
+    
     def _update_visualization(self) -> None:
         """Update visualization based on playback state."""
-        if self.audio_player.is_playing() and self.spectrum_analyzer.is_active():
-            bands = self.spectrum_analyzer.get_frequency_bands()
-            visualization = self._render_bars(bands)
-        else:
-            visualization = self._render_baseline_only()
+        try:
+            if self.audio_player.is_playing() and self.spectrum_analyzer.is_active():
+                bands = self.spectrum_analyzer.get_frequency_bands()
+                visualization = self._render_bars(bands)
+            else:
+                visualization = self._render_baseline_only()
+            
+            visualizer_widget = self.query_one("#visualizer-content", Static)
+            visualizer_widget.update(visualization)
+            
+        except Exception as e:
+            logger.error(f"Error updating visualization: {e}")
         
-        visualizer_widget = self.query_one("#visualizer-content", Static)
-        visualizer_widget.update(visualization)
+        finally:
+            self._measure_frame_time()

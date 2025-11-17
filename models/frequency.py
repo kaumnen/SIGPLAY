@@ -1,5 +1,26 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
+
+
+@dataclass
+class PerformanceMetrics:
+    """Performance monitoring metrics for the visualizer.
+    
+    Tracks CPU usage, frame rate, and other performance indicators
+    to enable adaptive optimization.
+    
+    Attributes:
+        cpu_percent: Current CPU usage percentage
+        frame_rate: Current frames per second
+        frame_times: Recent frame processing times in seconds
+        dropped_frames: Count of dropped frames
+        last_update: Timestamp of last metrics update
+    """
+    cpu_percent: float = 0.0
+    frame_rate: float = 0.0
+    frame_times: list[float] = field(default_factory=list)
+    dropped_frames: int = 0
+    last_update: float = 0.0
 
 
 @dataclass

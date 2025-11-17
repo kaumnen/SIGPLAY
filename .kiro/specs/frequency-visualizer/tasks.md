@@ -135,7 +135,7 @@
   - **Property 8: Terminal resize adaptation**
   - **Validates: Requirements 7.4**
 
-- [ ] 8. Integrate VisualizerView with AudioPlayer
+- [x] 8. Integrate VisualizerView with AudioPlayer
   - Update main.py to pass audio_player instance to VisualizerView
   - Ensure VisualizerView has access to playback state
   - Test that visualizer starts/stops with audio playback
@@ -146,7 +146,7 @@
   - **Property 6: Playback independence**
   - **Validates: Requirements 6.3**
 
-- [ ] 9. Add performance monitoring and optimization
+- [x] 9. Add performance monitoring and optimization
   - Implement CPU usage tracking for visualization processing
   - Add frame rate measurement to verify 15-30 FPS range
   - Implement adaptive frame rate reduction if CPU exceeds 20%
