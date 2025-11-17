@@ -170,21 +170,7 @@ NowPlayingView .state-display {
     text-align: center;
 }
 
-VisualizerView {
-    width: 100%;
-    height: 1fr;
-    align: center middle;
-    border: solid #ff8c00;
-    margin-top: 1;
-}
 
-#visualizer-content {
-    width: 100%;
-    height: 100%;
-    content-align: center middle;
-    color: #ff8c00;
-    text-style: bold;
-}
 
 MetersView {
     width: 100%;
