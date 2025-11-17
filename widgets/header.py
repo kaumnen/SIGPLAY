@@ -4,7 +4,6 @@ from textual.containers import Vertical
 from textual.app import ComposeResult
 from rich.text import Text
 
-
 SIGPLAY_ASCII = """
  ███████╗██╗ ██████╗ ██████╗ ██╗      █████╗ ██╗   ██╗
  ██╔════╝██║██╔════╝ ██╔══██╗██║     ██╔══██╗╚██╗ ██╔╝
@@ -14,9 +13,12 @@ SIGPLAY_ASCII = """
  ╚══════╝╚═╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   
 """
 
+VOLUME_BAR_WIDTH = 20
+DEFAULT_VOLUME_LEVEL = 30
+
 
 class Header(Vertical):
-    volume_level: reactive[int] = reactive(30)
+    volume_level: reactive[int] = reactive(DEFAULT_VOLUME_LEVEL)
     
     def compose(self) -> ComposeResult:
         yield Static(SIGPLAY_ASCII, id="header-logo")
@@ -25,17 +27,16 @@ class Header(Vertical):
     def _render_volume_bar(self) -> Text:
         result = Text()
         
-        bar_width = 20
-        filled_bars = int((self.volume_level / 100) * bar_width)
+        filled_bars = int((self.volume_level / 100) * VOLUME_BAR_WIDTH)
         
         result.append("Volume ", style="#888888")
         result.append("│", style="#888888")
         
-        for i in range(bar_width):
+        for i in range(VOLUME_BAR_WIDTH):
             if i < filled_bars:
-                if i < bar_width * 0.5:
+                if i < VOLUME_BAR_WIDTH * 0.5:
                     result.append("█", style="#cc5500")
-                elif i < bar_width * 0.75:
+                elif i < VOLUME_BAR_WIDTH * 0.75:
                     result.append("█", style="#ff8c00")
                 else:
                     result.append("█", style="#ffb347")

@@ -6,6 +6,12 @@ from rich.text import Text
 from services.audio_player import AudioPlayer
 from models.track import format_time
 
+PROGRESS_UPDATE_INTERVAL = 1.0
+VU_METER_UPDATE_FPS = 60
+VU_METER_WIDTH = 40
+VU_PEAK_DECAY = 0.95
+RMS_AMPLIFICATION = 3.0
+
 
 class NowPlayingView(Container):
     """Widget displaying currently playing track information."""
@@ -18,7 +24,7 @@ class NowPlayingView(Container):
         self._vu_timer = None
         self.vu_peak_left = 0.0
         self.vu_peak_right = 0.0
-        self.vu_peak_decay = 0.95
+        self.vu_peak_decay = VU_PEAK_DECAY
 
     def compose(self) -> ComposeResult:
         """Compose the now playing view with track info."""
@@ -33,8 +39,8 @@ class NowPlayingView(Container):
 
     def on_mount(self) -> None:
         """Start update timer for real-time progress updates."""
-        self._update_timer = self.set_interval(1.0, self._update_progress)
-        self._vu_timer = self.set_interval(1.0 / 60, self._update_vu_meters)
+        self._update_timer = self.set_interval(PROGRESS_UPDATE_INTERVAL, self._update_progress)
+        self._vu_timer = self.set_interval(1.0 / VU_METER_UPDATE_FPS, self._update_vu_meters)
         self._update_progress()
     
     def _update_progress(self) -> None:
@@ -93,8 +99,8 @@ class NowPlayingView(Container):
         rms_left = np.sqrt(np.mean(left ** 2))
         rms_right = np.sqrt(np.mean(right ** 2))
         
-        rms_left = min(1.0, rms_left * 3.0)
-        rms_right = min(1.0, rms_right * 3.0)
+        rms_left = min(1.0, rms_left * RMS_AMPLIFICATION)
+        rms_right = min(1.0, rms_right * RMS_AMPLIFICATION)
         
         return rms_left, rms_right
     
@@ -102,20 +108,18 @@ class NowPlayingView(Container):
         """Render horizontal VU meters with peak hold."""
         result = Text()
         
-        meter_width = 40
+        left_bars = int(left_level * VU_METER_WIDTH)
+        right_bars = int(right_level * VU_METER_WIDTH)
         
-        left_bars = int(left_level * meter_width)
-        right_bars = int(right_level * meter_width)
-        
-        peak_left_pos = int(self.vu_peak_left * meter_width)
-        peak_right_pos = int(self.vu_peak_right * meter_width)
+        peak_left_pos = int(self.vu_peak_left * VU_METER_WIDTH)
+        peak_right_pos = int(self.vu_peak_right * VU_METER_WIDTH)
         
         result.append("L │", style="#888888")
-        for i in range(meter_width):
+        for i in range(VU_METER_WIDTH):
             if i < left_bars:
-                if i < meter_width * 0.7:
+                if i < VU_METER_WIDTH * 0.7:
                     result.append("█", style="#cc5500")
-                elif i < meter_width * 0.85:
+                elif i < VU_METER_WIDTH * 0.85:
                     result.append("█", style="#ff8c00")
                 else:
                     result.append("█", style="#ffb347")
@@ -126,11 +130,11 @@ class NowPlayingView(Container):
         result.append(f"│ {int(left_level * 100):3d}%\n", style="#888888")
         
         result.append("R │", style="#888888")
-        for i in range(meter_width):
+        for i in range(VU_METER_WIDTH):
             if i < right_bars:
-                if i < meter_width * 0.7:
+                if i < VU_METER_WIDTH * 0.7:
                     result.append("█", style="#cc5500")
-                elif i < meter_width * 0.85:
+                elif i < VU_METER_WIDTH * 0.85:
                     result.append("█", style="#ff8c00")
                 else:
                     result.append("█", style="#ffb347")

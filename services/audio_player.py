@@ -11,55 +11,52 @@ from models.playback import PlaybackState
 
 logger = logging.getLogger(__name__)
 
+SAMPLE_RATE = 44100
+NUM_CHANNELS = 2
+AUDIO_FORMAT = miniaudio.SampleFormat.SIGNED16
+DEFAULT_VOLUME = 0.3
+VOLUME_STEP = 0.05
+RESTART_TRACK_THRESHOLD = 3.0
+
 
 class AudioPlayer:
-    """Singleton service for audio playback management."""
-    
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    """Service for audio playback management."""
     
     def __init__(self):
-        if not hasattr(self, '_initialized'):
-            try:
-                logger.info("Initializing audio player...")
-                
-                self._current_track: Optional[Track] = None
-                self._playlist: List[Track] = []
-                self._current_index: int = -1
-                self._volume: float = 0.3
-                self._state: PlaybackState = PlaybackState.STOPPED
-                self._start_time: float = 0
-                self._pause_position: float = 0
-                self._track_ended_naturally: bool = False
-                
-                self._device: Optional[miniaudio.PlaybackDevice] = None
-                self._stream_generator = None
-                self._stop_playback = threading.Event()
-                self._pause_event = threading.Event()
-                
-                self._audio_buffer_lock = threading.Lock()
-                self._latest_audio_buffer: Optional[np.ndarray] = None
-                
-                self._initialized = True
-                
-                logger.info("Audio player initialized successfully")
-                
-            except Exception as e:
-                error_msg = str(e) if str(e) else "Unknown audio error"
-                logger.critical(f"Failed to initialize audio device: {error_msg}")
-                raise RuntimeError(
-                    f"🔇 No audio device detected\n\n"
-                    f"SIGPLAY needs an audio output device to play music.\n"
-                    f"Please check that:\n"
-                    f"  • Your audio device is connected and powered on\n"
-                    f"  • Audio drivers are properly installed\n"
-                    f"  • The device is not being used exclusively by another app\n\n"
-                    f"Technical details: {error_msg}"
-                ) from e
+        try:
+            logger.info("Initializing audio player...")
+            
+            self._current_track: Optional[Track] = None
+            self._playlist: List[Track] = []
+            self._current_index: int = -1
+            self._volume: float = DEFAULT_VOLUME
+            self._state: PlaybackState = PlaybackState.STOPPED
+            self._start_time: float = 0
+            self._pause_position: float = 0
+            self._track_ended_naturally: bool = False
+            
+            self._device: Optional[miniaudio.PlaybackDevice] = None
+            self._stream_generator = None
+            self._stop_playback = threading.Event()
+            self._pause_event = threading.Event()
+            
+            self._audio_buffer_lock = threading.Lock()
+            self._latest_audio_buffer: Optional[np.ndarray] = None
+            
+            logger.info("Audio player initialized successfully")
+            
+        except Exception as e:
+            error_msg = str(e) if str(e) else "Unknown audio error"
+            logger.critical(f"Failed to initialize audio device: {error_msg}")
+            raise RuntimeError(
+                f"🔇 No audio device detected\n\n"
+                f"SIGPLAY needs an audio output device to play music.\n"
+                f"Please check that:\n"
+                f"  • Your audio device is connected and powered on\n"
+                f"  • Audio drivers are properly installed\n"
+                f"  • The device is not being used exclusively by another app\n\n"
+                f"Technical details: {error_msg}"
+            ) from e
     
     def play(self, track: Track) -> None:
         """Load and play an audio file.
@@ -89,9 +86,9 @@ class AudioPlayer:
             
             self._stream_generator = miniaudio.stream_file(
                 str(file_path),
-                output_format=miniaudio.SampleFormat.SIGNED16,
-                nchannels=2,
-                sample_rate=44100
+                output_format=AUDIO_FORMAT,
+                nchannels=NUM_CHANNELS,
+                sample_rate=SAMPLE_RATE
             )
             
             def audio_generator():
@@ -122,9 +119,9 @@ class AudioPlayer:
                         break
             
             self._device = miniaudio.PlaybackDevice(
-                sample_rate=44100,
-                nchannels=2,
-                output_format=miniaudio.SampleFormat.SIGNED16
+                sample_rate=SAMPLE_RATE,
+                nchannels=NUM_CHANNELS,
+                output_format=AUDIO_FORMAT
             )
             
             gen = audio_generator()
@@ -228,7 +225,7 @@ class AudioPlayer:
         
         current_position = self.get_position()
         
-        if current_position > 3.0:
+        if current_position > RESTART_TRACK_THRESHOLD:
             current_track = self._playlist[self._current_index]
             try:
                 self.play(current_track)
@@ -247,11 +244,11 @@ class AudioPlayer:
         """Set volume level (0.0 to 1.0)."""
         self._volume = max(0.0, min(1.0, level))
     
-    def increase_volume(self, amount: float = 0.05) -> None:
+    def increase_volume(self, amount: float = VOLUME_STEP) -> None:
         """Increase volume by specified amount."""
         self.set_volume(self._volume + amount)
     
-    def decrease_volume(self, amount: float = 0.05) -> None:
+    def decrease_volume(self, amount: float = VOLUME_STEP) -> None:
         """Decrease volume by specified amount."""
         self.set_volume(self._volume - amount)
     

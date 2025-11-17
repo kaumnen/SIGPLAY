@@ -13,6 +13,9 @@ from views.meters import MetersView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 
+PROGRESS_UPDATE_INTERVAL = 0.5
+TRACK_END_CHECK_INTERVAL = 0.5
+
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = log_dir / 'sigplay.log'
@@ -78,7 +81,7 @@ class SigplayApp(App):
         library_view.focus()
         
         self.run_worker(self._scan_library, exclusive=True)
-        self.set_interval(0.5, self._check_track_end)
+        self.set_interval(TRACK_END_CHECK_INTERVAL, self._check_track_end)
     
     async def _scan_library(self) -> None:
         """Scan music library in background thread.

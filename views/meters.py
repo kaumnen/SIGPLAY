@@ -9,6 +9,11 @@ from services.audio_player import AudioPlayer
 
 logger = logging.getLogger(__name__)
 
+BYTE_STREAM_UPDATE_FPS = 60
+BYTE_STREAM_NUM_LINES = 8
+MIN_DISPLAY_WIDTH = 40
+SCROLL_SPEED_MULTIPLIER = 2
+
 
 class MetersView(Container):
     
@@ -25,7 +30,7 @@ class MetersView(Container):
     
     def on_mount(self) -> None:
         self.terminal_width = self.size.width
-        self.animation_timer = self.set_interval(1.0 / 60, self._update_byte_stream)
+        self.animation_timer = self.set_interval(1.0 / BYTE_STREAM_UPDATE_FPS, self._update_byte_stream)
     
     def on_resize(self) -> None:
         self.terminal_width = self.size.width
@@ -39,19 +44,19 @@ class MetersView(Container):
             result.append("  Waiting for playback...\n", style="#555555")
             return result
         
-        width = max(40, self.terminal_width - 6)
+        width = max(MIN_DISPLAY_WIDTH, self.terminal_width - 6)
         bytes_per_line = width // 3
         
         result.append("\n  LIVE AUDIO STREAM\n", style="#ff8c00 bold")
         result.append("  " + "─" * width + "\n", style="#cc5500")
         
         start_idx = self.byte_offset % len(audio_bytes)
-        display_bytes = audio_bytes[start_idx:start_idx + bytes_per_line * 8]
+        display_bytes = audio_bytes[start_idx:start_idx + bytes_per_line * BYTE_STREAM_NUM_LINES]
         
-        if len(display_bytes) < bytes_per_line * 8:
-            display_bytes += audio_bytes[:bytes_per_line * 8 - len(display_bytes)]
+        if len(display_bytes) < bytes_per_line * BYTE_STREAM_NUM_LINES:
+            display_bytes += audio_bytes[:bytes_per_line * BYTE_STREAM_NUM_LINES - len(display_bytes)]
         
-        for line_idx in range(8):
+        for line_idx in range(BYTE_STREAM_NUM_LINES):
             result.append("  ", style="#1a1a1a")
             line_start = line_idx * bytes_per_line
             line_end = line_start + bytes_per_line
@@ -90,9 +95,9 @@ class MetersView(Container):
             if is_playing and audio_buffer is not None and len(audio_buffer) > 0:
                 audio_bytes = audio_buffer.tobytes()
                 
-                width = max(40, self.terminal_width - 10)
+                width = max(MIN_DISPLAY_WIDTH, self.terminal_width - 10)
                 bytes_per_line = width // 3
-                scroll_speed = bytes_per_line * 2
+                scroll_speed = bytes_per_line * SCROLL_SPEED_MULTIPLIER
                 
                 self.byte_offset = (self.byte_offset + scroll_speed) % len(audio_bytes)
                 
