@@ -10,7 +10,6 @@ from widgets.header import Header
 from views.library import LibraryView
 from views.now_playing import NowPlayingView
 from views.meters import MetersView
-from models.track import ViewState
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 
