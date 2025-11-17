@@ -7,18 +7,23 @@ Header {
     dock: top;
     height: auto;
     background: #2d2d2d;
-    color: #ff8c00;
-    text-align: center;
     border: solid #cc5500;
     padding: 1;
 }
 
-#header {
+#header-logo {
     background: #2d2d2d;
     color: #ff8c00;
     text-align: center;
     height: auto;
-    border: solid #cc5500;
+}
+
+#header-volume {
+    background: #2d2d2d;
+    color: #fff8dc;
+    text-align: center;
+    height: 1;
+    padding: 0;
 }
 
 Footer {

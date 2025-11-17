@@ -29,7 +29,6 @@ class NowPlayingView(Container):
             
             with Container(classes="progress-container"):
                 yield Static("0:00 / 0:00", id="np-time", classes="time-display")
-                yield Static(self._render_volume_bar(0.7), id="np-volume", classes="volume-display")
                 yield Static("State: Stopped", id="np-state", classes="state-display")
             
             yield Static(self._render_vu_meters(0.0, 0.0), id="np-vu-meters")
@@ -75,9 +74,6 @@ class NowPlayingView(Container):
             
             time_widget = self.query_one("#np-time", Static)
             time_widget.update("0:00 / 0:00")
-        
-        volume_widget = self.query_one("#np-volume", Static)
-        volume_widget.update(self._render_volume_bar(volume_level))
         
         state_widget = self.query_one("#np-state", Static)
         state_widget.update(f"State: {playback_state.value.capitalize()}")

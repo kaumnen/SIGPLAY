@@ -215,6 +215,9 @@ class SigplayApp(App):
         volume_pct = int(self.audio_player.get_volume() * 100)
         self.notify(f"🔊 Volume ▲ {volume_pct}%", timeout=1.5)
         
+        header = self.query_one(Header)
+        header.volume_level = volume_pct
+        
         now_playing = self.query_one("#now_playing", NowPlayingView)
         now_playing._update_progress()
     
@@ -224,6 +227,9 @@ class SigplayApp(App):
         volume_pct = int(self.audio_player.get_volume() * 100)
         mute_icon = "🔇" if volume_pct == 0 else "🔉"
         self.notify(f"{mute_icon} Volume ▼ {volume_pct}%", timeout=1.5)
+        
+        header = self.query_one(Header)
+        header.volume_level = volume_pct
         
         now_playing = self.query_one("#now_playing", NowPlayingView)
         now_playing._update_progress()
