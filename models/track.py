@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Dict, Any
 
@@ -32,17 +31,3 @@ class Track:
         minutes = int(seconds // 60)
         secs = int(seconds % 60)
         return f"{minutes}:{secs:02d}"
-
-
-class ViewState(Enum):
-    """Enum for managing different view states in the application."""
-    LIBRARY = "library"
-    NOW_PLAYING = "now_playing"
-    VISUALIZER = "visualizer"
-
-
-@dataclass
-class AppState:
-    """Represents the current state of the application."""
-    current_view: ViewState
-    selected_track_index: int = 0

@@ -89,23 +89,6 @@ class MusicLibrary:
         """
         return self._tracks
     
-    def get_track_by_index(self, index: int) -> Optional[Track]:
-        """Retrieve specific track by index.
-        
-        Args:
-            index: Index of track in track list.
-            
-        Returns:
-            Track object if index is valid, None otherwise.
-        """
-        if 0 <= index < len(self._tracks):
-            return self._tracks[index]
-        return None
-    
-    def refresh(self) -> None:
-        """Rescan library to update track list."""
-        self.scan()
-    
     @staticmethod
     def _extract_metadata(file_path: Path) -> Dict[str, Any]:
         """Extract metadata from audio file using mutagen.

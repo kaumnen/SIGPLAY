@@ -1,51 +1,5 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import numpy as np
-
-
-@dataclass
-class PerformanceMetrics:
-    """Performance monitoring metrics for the visualizer.
-    
-    Tracks CPU usage, frame rate, and other performance indicators
-    to enable adaptive optimization.
-    
-    Attributes:
-        cpu_percent: Current CPU usage percentage
-        frame_rate: Current frames per second
-        frame_times: Recent frame processing times in seconds
-        dropped_frames: Count of dropped frames
-        last_update: Timestamp of last metrics update
-    """
-    cpu_percent: float = 0.0
-    frame_rate: float = 0.0
-    frame_times: list[float] = field(default_factory=list)
-    dropped_frames: int = 0
-    last_update: float = 0.0
-
-
-@dataclass
-class VisualizerConfig:
-    """Configuration for visualizer behavior.
-    
-    Defines parameters that control how the frequency visualizer operates,
-    including update rates, display dimensions, and frequency range mappings.
-    
-    Attributes:
-        update_rate: Visualization refresh rate in frames per second
-        bar_count: Number of vertical bars to display
-        max_bar_height: Maximum height of bars in terminal rows
-        bass_range: Frequency range for bass (Hz), as (min, max) tuple
-        mid_range: Frequency range for mid frequencies (Hz), as (min, max) tuple
-        high_range: Frequency range for high frequencies (Hz), as (min, max) tuple
-        smoothing_factor: Temporal smoothing coefficient (0-1), higher = smoother
-    """
-    update_rate: int = 20
-    bar_count: int = 60
-    max_bar_height: int = 20
-    bass_range: tuple[int, int] = (20, 250)
-    mid_range: tuple[int, int] = (250, 4000)
-    high_range: tuple[int, int] = (4000, 20000)
-    smoothing_factor: float = 0.3
 
 
 @dataclass

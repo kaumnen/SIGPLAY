@@ -286,10 +286,6 @@ class AudioPlayer:
         self._playlist = tracks
         self._current_index = max(0, min(start_index, len(tracks) - 1)) if tracks else -1
     
-    def get_playlist(self) -> List[Track]:
-        """Return current playlist."""
-        return self._playlist
-    
     def get_latest_audio_buffer(self) -> Optional[np.ndarray]:
         """Get the most recent audio buffer.
         
@@ -302,20 +298,3 @@ class AudioPlayer:
     def track_ended_naturally(self) -> bool:
         """Check if track ended naturally (not manually stopped)."""
         return self._track_ended_naturally
-    
-    def list_audio_devices(self) -> List[str]:
-        """List available audio output devices."""
-        try:
-            devices = miniaudio.Devices()
-            return [device['name'] for device in devices.get_playbacks()]
-        except Exception as e:
-            logger.error(f"Error listing audio devices: {e}")
-            return ["System Default"]
-    
-    def set_audio_device(self, device_name: str) -> None:
-        """Set audio output device.
-        
-        Currently a stub for future implementation.
-        TODO: Implement device switching without interrupting playback.
-        """
-        pass
