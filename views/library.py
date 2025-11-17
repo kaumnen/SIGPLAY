@@ -84,7 +84,11 @@ class LibraryView(Container):
             if not track:
                 continue
             
-            label = item.query_one(Label)
+            try:
+                label = item.query_one(Label)
+            except Exception:
+                continue
+            
             is_selected = (i == event.list_view.index)
             is_playing = (current_track and track.file_path == current_track.file_path)
             
@@ -157,5 +161,5 @@ class LibraryView(Container):
         """Play selected track (Enter key)."""
         list_view = self.query_one("#track-list", ListView)
         if list_view.index is not None:
-            self.on_list_view_selected(ListView.Selected(list_view, list_view.highlighted_child))
+            self.on_list_view_selected(ListView.Selected(list_view, list_view.highlighted_child, list_view.index))
 
