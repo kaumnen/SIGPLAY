@@ -9,16 +9,19 @@ inclusion: always
 - **Python**: 3.13+ (specified in `.python-version`)
 - **Framework**: Textual 6.5.0+ - TUI framework for terminal applications
 - **Package Manager**: `uv` - see uv-steering.md for dependency management rules
-- **Audio**: pygame.mixer for playback (MP3, WAV, OGG, FLAC support)
+- **Audio**: miniaudio for playback (MP3, WAV, OGG, FLAC support)
 - **FFT**: numpy for frequency spectrum analysis
+- **Metadata**: mutagen for reading audio file tags
 
 ## Key Dependencies
 
 ```toml
 textual[syntax]>=6.5.0  # Main TUI framework with syntax highlighting
 textual-dev>=1.8.0      # Development tools (console, run --dev)
-pygame>=2.6.0           # Audio playback via pygame.mixer
-numpy>=2.0.0            # FFT calculations for visualizer
+miniaudio>=1.61         # Audio playback and streaming
+numpy>=1.26.0           # FFT calculations for visualizer
+mutagen>=1.47.0         # Audio metadata extraction
+psutil>=7.1.3           # CPU/memory monitoring
 ```
 
 ## Running & Testing
@@ -118,13 +121,44 @@ class Track:
 
 ### Async/Threading
 - Use `asyncio` for Textual's async methods (`on_mount`, etc.)
-- Use `threading.Thread` for blocking operations (audio playback, file scanning)
+- Use `threading.Thread` for blocking operations (file scanning, background tasks)
 - Use `call_from_thread()` to update UI from background threads
+- Audio playback uses miniaudio's generator-based callback system (no manual threading needed)
+
+### Audio Playback Patterns
+```python
+# Stream audio file with miniaudio
+stream_generator = miniaudio.stream_file(
+    str(file_path),
+    output_format=miniaudio.SampleFormat.SIGNED16,
+    nchannels=2,
+    sample_rate=44100
+)
+
+# Create playback device
+device = miniaudio.PlaybackDevice(
+    sample_rate=44100,
+    nchannels=2,
+    output_format=miniaudio.SampleFormat.SIGNED16
+)
+
+# Generator callback must use yield expressions to receive num_frames
+def audio_callback_generator():
+    num_frames = yield b''  # Prime the generator
+    while True:
+        audio_data = stream_generator.send(num_frames)
+        num_frames = yield audio_data  # Yield data and receive next num_frames
+
+# Initialize and start playback
+gen = audio_callback_generator()
+next(gen)  # Prime the generator
+device.start(gen)
+```
 
 ## Performance Considerations
 
 - Target 30 FPS for visualizer updates
 - Use `set_interval()` for periodic updates, not tight loops
 - Debounce expensive operations (FFT calculations, file I/O)
-- Check `pygame.mixer.music.get_busy()` instead of polling continuously
+- Monitor playback state via AudioPlayer.get_state() instead of polling
 - Profile CPU usage and adapt frame rates dynamically

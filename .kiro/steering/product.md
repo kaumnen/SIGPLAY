@@ -81,7 +81,7 @@ The app uses a fixed 3-component layout:
 ## Music Library
 
 - Default location: `~/Music`
-- Supported formats: MP3, WAV, OGG, FLAC (via pygame.mixer)
+- Supported formats: MP3, WAV, OGG, FLAC (via miniaudio)
 - Scans recursively through subdirectories
 - Displays: Title, Artist, Album, Duration
 - Auto-advances to next track when current track ends
