@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Codebase Audit & Simplification",
+  "description": "Analyzes the entire codebase to identify unused imports, functions, classes, redundant code, over-engineered patterns, and opportunities for simplification. Provides actionable recommendations to solidify and streamline the project.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Please perform a comprehensive codebase audit with the following objectives:\n\n1. **Unused Code Detection**:\n   - Identify unused imports across all Python files\n   - Find unused functions, methods, and classes\n   - Detect unused variables and parameters\n   - Spot dead code paths and unreachable code\n\n2. **Simplification Opportunities**:\n   - Identify over-engineered patterns that could be simplified\n   - Find redundant abstractions or unnecessary indirection\n   - Spot code duplication that could be consolidated\n   - Identify overly complex logic that could be refactored\n\n3. **Dependency Analysis**:\n   - Check if all dependencies in pyproject.toml are actually used\n   - Identify if any dependencies are redundant or overlapping\n   - Verify if lighter alternatives exist for heavy dependencies\n\n4. **Architecture Review**:\n   - Verify adherence to the project structure rules (structure.md)\n   - Check if services, models, views, and widgets are properly separated\n   - Identify any architectural inconsistencies or violations\n\n5. **Code Quality**:\n   - Check for missing type hints\n   - Identify inconsistent error handling patterns\n   - Spot potential performance issues\n   - Find hardcoded values that should be constants\n\n6. **Documentation & Comments**:\n   - Identify outdated or misleading comments\n   - Find unnecessary comments that don't add value\n   - Spot missing docstrings for public APIs\n\nPlease provide:\n- A prioritized list of findings with severity (Critical, High, Medium, Low)\n- Specific file locations and line numbers where applicable\n- Concrete recommendations for each finding\n- Estimated impact of each change (code reduction, performance improvement, maintainability gain)\n- A suggested order of refactoring to minimize risk\n\nFocus on actionable insights that will make the codebase cleaner, simpler, and more maintainable."
+  }
+}
