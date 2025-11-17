@@ -34,6 +34,7 @@ class AudioPlayer:
                 self._state: PlaybackState = PlaybackState.STOPPED
                 self._start_time: float = 0
                 self._pause_position: float = 0
+                self._track_ended_naturally: bool = False
                 
                 self._device: Optional[miniaudio.PlaybackDevice] = None
                 self._stream_generator = None
@@ -116,6 +117,7 @@ class AudioPlayer:
                     except StopIteration:
                         logger.debug("Reached end of audio file")
                         self._state = PlaybackState.STOPPED
+                        self._track_ended_naturally = True
                         num_frames = yield b'\x00' * (num_frames * 2 * 2)
                         break
             
@@ -133,6 +135,7 @@ class AudioPlayer:
             self._state = PlaybackState.PLAYING
             self._start_time = time.time()
             self._pause_position = 0
+            self._track_ended_naturally = False
             
             if self._playlist and track in self._playlist:
                 self._current_index = self._playlist.index(track)
@@ -176,6 +179,7 @@ class AudioPlayer:
     def stop(self) -> None:
         """Stop playback and reset position."""
         self._stop_playback.set()
+        self._track_ended_naturally = False
         
         if self._device:
             try:
@@ -294,6 +298,10 @@ class AudioPlayer:
         """
         with self._audio_buffer_lock:
             return self._latest_audio_buffer.copy() if self._latest_audio_buffer is not None else None
+    
+    def track_ended_naturally(self) -> bool:
+        """Check if track ended naturally (not manually stopped)."""
+        return self._track_ended_naturally
     
     def list_audio_devices(self) -> List[str]:
         """List available audio output devices."""

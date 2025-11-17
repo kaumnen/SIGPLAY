@@ -147,8 +147,8 @@ class SigplayApp(App):
         Handles errors during auto-advance gracefully.
         """
         try:
-            if self.audio_player.get_state().name == "STOPPED" and self.audio_player.get_current_track():
-                logger.debug("Track ended, advancing to next")
+            if self.audio_player.track_ended_naturally():
+                logger.debug("Track ended naturally, advancing to next")
                 self.audio_player.next_track()
                 library_view = self.query_one("#library", LibraryView)
                 library_view._update_play_indicator()
