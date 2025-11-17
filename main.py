@@ -45,6 +45,7 @@ class SigplayApp(App):
         Binding("+", "volume_up", "Vol+"),
         Binding("=", "volume_up", "Vol+", show=False),
         Binding("-", "volume_down", "Vol-"),
+        Binding("m", "toggle_mute", "Mute"),
         Binding("o", "select_device", "Device"),
     ]
     
@@ -220,6 +221,7 @@ class SigplayApp(App):
         
         header = self.query_one(Header)
         header.volume_level = volume_pct
+        header.is_muted = self.audio_player.is_muted()
         
         now_playing = self.query_one("#now_playing", NowPlayingView)
         now_playing._update_progress()
@@ -233,6 +235,23 @@ class SigplayApp(App):
         
         header = self.query_one(Header)
         header.volume_level = volume_pct
+        header.is_muted = self.audio_player.is_muted()
+        
+        now_playing = self.query_one("#now_playing", NowPlayingView)
+        now_playing._update_progress()
+    
+    def action_toggle_mute(self) -> None:
+        """Toggle mute state."""
+        self.audio_player.toggle_mute()
+        
+        header = self.query_one(Header)
+        header.is_muted = self.audio_player.is_muted()
+        
+        if self.audio_player.is_muted():
+            self.notify("🔇 Muted", timeout=1.5)
+        else:
+            volume_pct = int(self.audio_player.get_volume() * 100)
+            self.notify(f"🔊 Unmuted {volume_pct}%", timeout=1.5)
         
         now_playing = self.query_one("#now_playing", NowPlayingView)
         now_playing._update_progress()

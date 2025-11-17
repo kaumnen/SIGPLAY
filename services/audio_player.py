@@ -30,6 +30,8 @@ class AudioPlayer:
             self._playlist: List[Track] = []
             self._current_index: int = -1
             self._volume: float = DEFAULT_VOLUME
+            self._muted: bool = False
+            self._volume_before_mute: float = DEFAULT_VOLUME
             self._state: PlaybackState = PlaybackState.STOPPED
             self._start_time: float = 0
             self._pause_position: float = 0
@@ -243,14 +245,45 @@ class AudioPlayer:
     def set_volume(self, level: float) -> None:
         """Set volume level (0.0 to 1.0)."""
         self._volume = max(0.0, min(1.0, level))
+        if self._volume > 0:
+            self._muted = False
     
     def increase_volume(self, amount: float = VOLUME_STEP) -> None:
         """Increase volume by specified amount."""
-        self.set_volume(self._volume + amount)
+        if self._muted:
+            self.unmute()
+        else:
+            self.set_volume(self._volume + amount)
     
     def decrease_volume(self, amount: float = VOLUME_STEP) -> None:
         """Decrease volume by specified amount."""
+        if self._muted:
+            self.unmute()
         self.set_volume(self._volume - amount)
+    
+    def toggle_mute(self) -> None:
+        """Toggle mute state."""
+        if self._muted:
+            self.unmute()
+        else:
+            self.mute()
+    
+    def mute(self) -> None:
+        """Mute audio."""
+        if not self._muted:
+            self._volume_before_mute = self._volume
+            self._volume = 0.0
+            self._muted = True
+    
+    def unmute(self) -> None:
+        """Unmute audio."""
+        if self._muted:
+            self._volume = self._volume_before_mute
+            self._muted = False
+    
+    def is_muted(self) -> bool:
+        """Check if audio is muted."""
+        return self._muted
     
     def get_state(self) -> PlaybackState:
         """Return current playback state."""

@@ -18,12 +18,21 @@ Header {
     height: auto;
 }
 
+#header-divider {
+    background: #2d2d2d;
+    color: #cc5500;
+    text-align: center;
+    height: 1;
+    padding: 0;
+}
+
 #header-volume {
     background: #2d2d2d;
     color: #fff8dc;
     text-align: center;
     height: 1;
     padding: 0;
+    margin-top: 1;
 }
 
 Footer {
