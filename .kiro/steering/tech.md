@@ -19,10 +19,8 @@ inclusion: always
 textual[syntax]>=6.5.0  # Main TUI framework with syntax highlighting
 textual-dev>=1.8.0      # Development tools (console, run --dev)
 miniaudio>=1.61         # Audio playback and streaming
-numpy>=1.26.0           # FFT calculations for meters
+numpy>=1.26.0           # Audio buffer processing and RMS calculations
 mutagen>=1.47.0         # Audio metadata extraction
-psutil>=7.1.3           # CPU/memory monitoring
-pygame>=2.6.1           # Additional audio support
 ```
 
 ## Running & Testing

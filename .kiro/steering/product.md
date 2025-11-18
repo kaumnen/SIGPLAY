@@ -50,6 +50,7 @@ The app uses a fixed 3-component layout:
 - `p` - Previous track
 - `+`/`=` - Volume up
 - `-` - Volume down
+- `m` - Toggle mute
 - `o` - Select audio device (future feature)
 
 ### Library View Keybindings (vim-style)
@@ -88,9 +89,10 @@ The app uses a fixed 3-component layout:
 
 ## Meters Behavior
 
-- **Active state**: Shows frequency bars when music is playing
-- **Idle state**: Shows baseline only when stopped
-- **Frequency ranges**: Bass (left), Mid (center), High (right)
-- **Color mapping**: Bars colored by frequency range using palette
-- **Adaptive**: Adjusts bar count based on terminal width (20-120 bars)
+- **Active state**: Shows live audio byte stream as scrolling hexadecimal display when music is playing
+- **Idle state**: Shows "NO AUDIO DATA" message when stopped
+- **Visualization**: Real-time hex dump of audio buffer data
+- **Color mapping**: Bytes colored by intensity (darker orange for low values, brighter for high values)
+- **Adaptive**: Adjusts bytes per line based on terminal width (minimum 40 chars)
 - **Responsive**: Recalculates layout on terminal resize
+- **Scrolling**: Auto-scrolls through audio data at 2x speed for visual effect
