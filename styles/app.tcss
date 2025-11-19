@@ -191,7 +191,7 @@ FloppyMixView {
     width: 100%;
     height: 100%;
     background: #1a1a1a;
-    padding: 1;
+    padding: 1 2;
 }
 
 #floppy-mix-header {
@@ -200,7 +200,7 @@ FloppyMixView {
     background: #2d2d2d;
     border: solid #cc5500;
     padding: 1;
-    margin-bottom: 1;
+    margin-bottom: 2;
 }
 
 #floppy-mix-title-row {
@@ -216,7 +216,7 @@ FloppyMixView {
     text-align: left;
     background: #2d2d2d;
     width: 1fr;
-    padding: 0 1;
+    padding: 1 2;
 }
 
 #floppy-mix-status-row {
@@ -257,6 +257,7 @@ TrackSelectionPanel {
     color: #ff8c00;
     text-style: bold;
     padding: 0 0 1 0;
+    margin-bottom: 1;
     background: #1a1a1a;
 }
 
@@ -301,7 +302,7 @@ InstructionsPanel {
     background: #1a1a1a;
     border: solid #ff8c00;
     padding: 1;
-    margin-left: 1;
+    margin-left: 2;
 }
 
 #instructions-container {
@@ -313,6 +314,7 @@ InstructionsPanel {
     color: #ff8c00;
     text-style: bold;
     padding: 0 0 1 0;
+    margin-bottom: 1;
     background: #1a1a1a;
 }
 
@@ -439,7 +441,7 @@ FilenamePromptScreen {
     color: #ff8c00;
     border: solid #ff8c00;
     text-style: bold;
-    margin-left: 2;
+    margin-left: 4;
 }
 
 #start-mix-button:hover {
