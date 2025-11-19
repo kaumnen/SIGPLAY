@@ -4,11 +4,14 @@ from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
 from textual import events
 from textual.app import ComposeResult
-from textual.widgets import Label
+from textual.widgets import Label, Input, Button
+from textual.screen import ModalScreen
 from models.mix_request import MixRequest
 from models.track import Track
 from pathlib import Path
 import logging
+import shutil
+import re
 
 from .track_selection_panel import TrackSelectionPanel
 from .instructions_panel import InstructionsPanel
@@ -281,12 +284,158 @@ class FloppyMixDialog(Container):
     def on_mix_progress_panel_save_requested(self, event: MixProgressPanel.SaveRequested) -> None:
         """Handle save button press."""
         logger.info("Save mix requested")
-        self.app.notify("Save functionality coming in task 7", severity="information")
+        self._save_mix()
     
     def on_mix_progress_panel_discard_requested(self, event: MixProgressPanel.DiscardRequested) -> None:
         """Handle discard button press."""
         logger.info("Discard mix requested")
-        self.app.notify("Discard functionality coming in task 7", severity="information")
+        self._discard_mix()
+    
+    def _save_mix(self) -> None:
+        """Save the generated mix to the Music Library directory."""
+        if not self._mix_file_path:
+            logger.error("Cannot save: no mix file path")
+            self.app.notify("❌ No mix file to save", severity="error")
+            return
+        
+        if self.mixing_state != "previewing":
+            logger.error("Cannot save: not in preview state")
+            self.app.notify("❌ No mix to save", severity="error")
+            return
+        
+        self.app.push_screen(
+            FilenamePromptScreen(),
+            callback=self._handle_filename_input
+        )
+    
+    def _handle_filename_input(self, filename: str | None) -> None:
+        """Handle filename input from prompt screen."""
+        if not filename:
+            logger.debug("Save cancelled by user")
+            return
+        
+        if not self._mix_file_path:
+            logger.error("Mix file path lost during save")
+            self.app.notify("❌ Mix file not found", severity="error")
+            return
+        
+        validated_filename = self._validate_filename(filename)
+        if not validated_filename:
+            self.app.notify(
+                "❌ Invalid filename. Please use only alphanumeric characters, spaces, hyphens, and underscores",
+                severity="error",
+                timeout=5
+            )
+            return
+        
+        if not validated_filename.endswith('.wav'):
+            validated_filename += '.wav'
+        
+        try:
+            music_dir = self.music_library.music_dir
+            destination = music_dir / validated_filename
+            
+            if destination.exists():
+                self.app.notify(
+                    f"❌ File '{validated_filename}' already exists. Please choose a different name.",
+                    severity="error",
+                    timeout=5
+                )
+                return
+            
+            source = Path(self._mix_file_path)
+            if not source.exists():
+                logger.error(f"Source mix file not found: {self._mix_file_path}")
+                self.app.notify("❌ Mix file not found", severity="error")
+                return
+            
+            shutil.copy2(source, destination)
+            logger.info(f"Mix saved successfully to: {destination}")
+            
+            self.app.notify(
+                f"✓ Mix saved successfully!\n📁 {destination}",
+                severity="information",
+                timeout=5
+            )
+            
+            self._mix_file_path = None
+            self.hide()
+            
+        except PermissionError as e:
+            logger.error(f"Permission denied saving mix: {e}")
+            self.app.notify(
+                f"❌ Cannot save mix: Permission denied\n\nPlease check directory permissions for {music_dir}",
+                severity="error",
+                timeout=8
+            )
+        except OSError as e:
+            logger.error(f"OS error saving mix: {e}")
+            self.app.notify(
+                f"❌ Cannot save mix: {str(e)}\n\nPlease check disk space and permissions",
+                severity="error",
+                timeout=8
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error saving mix: {e}")
+            self.app.notify(
+                f"❌ Failed to save mix: {str(e)}",
+                severity="error",
+                timeout=8
+            )
+    
+    def _validate_filename(self, filename: str) -> str | None:
+        """Validate and sanitize filename.
+        
+        Args:
+            filename: User-provided filename
+            
+        Returns:
+            Sanitized filename or None if invalid
+        """
+        if not filename or not filename.strip():
+            return None
+        
+        filename = filename.strip()
+        
+        if filename.endswith('.wav'):
+            filename = filename[:-4]
+        
+        if not re.match(r'^[a-zA-Z0-9_\-\s]+$', filename):
+            return None
+        
+        filename = re.sub(r'\s+', '_', filename)
+        
+        return filename
+    
+    def _discard_mix(self) -> None:
+        """Discard the generated mix and reset dialog."""
+        if not self._mix_file_path:
+            logger.debug("No mix to discard")
+            return
+        
+        if self.mixing_state != "previewing":
+            logger.debug("Not in preview state, nothing to discard")
+            return
+        
+        logger.info("Discarding mix")
+        
+        self._stop_preview_playback()
+        
+        self._delete_temp_mix_file()
+        
+        self.mixing_state = "idle"
+        self._mix_file_path = None
+        
+        if self._track_panel:
+            self._track_panel.clear_selection()
+        if self._instructions_panel:
+            self._instructions_panel.clear()
+        if self._progress_panel:
+            self._progress_panel.hide_preview_controls()
+            self._progress_panel.update_status("Ready to mix")
+        
+        self.app.notify("Mix discarded", severity="information")
+        logger.debug("Mix discarded and dialog reset")
     
     def watch_is_visible(self, visible: bool) -> None:
         """React to visibility changes."""
@@ -294,3 +443,39 @@ class FloppyMixDialog(Container):
             self.add_class("visible")
         else:
             self.remove_class("visible")
+
+
+class FilenamePromptScreen(ModalScreen[str | None]):
+    """Modal screen to prompt user for filename."""
+    
+    def compose(self) -> ComposeResult:
+        """Compose the filename prompt."""
+        with Container(id="filename-prompt-container"):
+            yield Label("💾 Save Mix", id="filename-prompt-title")
+            yield Label("Enter a name for your mix:", id="filename-prompt-label")
+            yield Input(
+                placeholder="my_awesome_mix",
+                id="filename-input"
+            )
+            with Horizontal(id="filename-prompt-buttons"):
+                yield Button("Save", id="save-confirm-button", variant="success")
+                yield Button("Cancel", id="cancel-button", variant="default")
+    
+    def on_mount(self) -> None:
+        """Focus input on mount."""
+        input_widget = self.query_one("#filename-input", Input)
+        input_widget.focus()
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "save-confirm-button":
+            input_widget = self.query_one("#filename-input", Input)
+            filename = input_widget.value.strip()
+            self.dismiss(filename if filename else None)
+        elif event.button.id == "cancel-button":
+            self.dismiss(None)
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in input."""
+        filename = event.value.strip()
+        self.dismiss(filename if filename else None)

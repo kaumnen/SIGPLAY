@@ -130,8 +130,8 @@
   - **Property 17: Dialog closure cleanup**
   - **Validates: Requirements 7.5, 9.4**
 
-- [ ] 7. Implement save/discard functionality
-- [ ] 7.1 Implement save mix
+- [x] 7. Implement save/discard functionality
+- [x] 7.1 Implement save mix
   - Prompt user for filename
   - Validate filename
   - Copy mix file to Music Library directory
@@ -139,7 +139,7 @@
   - Handle save errors
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 7.2 Implement discard mix
+- [x] 7.2 Implement discard mix
   - Stop playback
   - Delete temporary mix file
   - Reset dialog to initial state

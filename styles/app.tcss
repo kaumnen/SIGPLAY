@@ -356,3 +356,58 @@ Button.success {
 Button.error {
     border: solid #cc0000;
 }
+
+FilenamePromptScreen {
+    align: center middle;
+}
+
+#filename-prompt-container {
+    width: 60;
+    height: auto;
+    background: #1a1a1a;
+    border: thick #ff8c00;
+    padding: 2;
+}
+
+#filename-prompt-title {
+    color: #ff8c00;
+    text-style: bold;
+    text-align: center;
+    background: #2d2d2d;
+    padding: 1;
+    border: solid #cc5500;
+    margin-bottom: 1;
+}
+
+#filename-prompt-label {
+    color: #fff8dc;
+    text-align: center;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+#filename-input {
+    width: 100%;
+    background: #0a0a0a;
+    border: solid #cc5500;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+#filename-input:focus {
+    border: solid #ff8c00;
+}
+
+#filename-prompt-buttons {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+#save-confirm-button {
+    margin-right: 2;
+}
+
+#cancel-button {
+    margin-left: 2;
+}
