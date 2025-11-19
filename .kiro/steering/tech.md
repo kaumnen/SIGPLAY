@@ -10,6 +10,8 @@ inclusion: always
 - **Framework**: Textual 6.5.0+ - TUI framework for terminal applications
 - **Package Manager**: `uv` - see uv-steering.md for dependency management rules
 - **Audio**: miniaudio for playback (MP3, WAV, OGG, FLAC support)
+- **Audio Processing**: Pedalboard for DJ mixing and effects
+- **AI Agent**: Strands Agents with AWS Bedrock (Claude) for natural language DJ mixing
 - **FFT**: numpy for frequency spectrum analysis
 - **Metadata**: mutagen for reading audio file tags
 
@@ -21,6 +23,9 @@ textual-dev>=1.8.0      # Development tools (console, run --dev)
 miniaudio>=1.61         # Audio playback and streaming
 numpy>=1.26.0           # Audio buffer processing and RMS calculations
 mutagen>=1.47.0         # Audio metadata extraction
+pedalboard>=0.9.19      # Audio effects and mixing (Floppy Mix feature)
+strands-agents>=1.17.0  # AI agent framework for DJ mixing
+hypothesis>=6.148.2     # Property-based testing
 ```
 
 ## Running & Testing
@@ -80,7 +85,37 @@ def on_list_view_selected(self, event: ListView.Selected) -> None:
 - All styling in `styles/app.tcss` using Textual CSS syntax
 - Use widget IDs (`#my-widget`) and classes (`.my-class`) for selectors
 - Reference color palette variables defined in app.tcss
-- Built-in widgets to prefer: `Static`, `ListView`, `ListItem`, `ProgressBar`, `Footer`, `Container`, `ContentSwitcher`, `Label`
+- Built-in widgets to prefer: `Static`, `ListView`, `ListItem`, `ProgressBar`, `Footer`, `Container`, `ContentSwitcher`, `Label`, `Button`, `Input`, `TextArea`, `LoadingIndicator`
+
+### View Switching Pattern
+```python
+# Use ContentSwitcher for multiple full-screen views
+with ContentSwitcher(id="view-switcher", initial="main-view"):
+    yield MainView(id="main-view")
+    yield FeatureView(id="feature-view")
+
+# Switch views programmatically
+switcher = self.query_one("#view-switcher", ContentSwitcher)
+switcher.current = "feature-view"
+```
+
+### Modal Screens
+```python
+# Create modal screen for user input
+class PromptScreen(ModalScreen[str | None]):
+    def compose(self) -> ComposeResult:
+        with Container():
+            yield Label("Enter value:")
+            yield Input(id="input")
+            yield Button("OK")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        input_value = self.query_one("#input", Input).value
+        self.dismiss(input_value)
+
+# Use modal screen with callback
+self.app.push_screen(PromptScreen(), callback=self.handle_input)
+```
 
 ### Common Patterns
 ```python
@@ -128,6 +163,26 @@ class Track:
 - Use `call_from_thread()` to update UI from background threads
 - Audio playback uses miniaudio's generator-based callback system (no manual threading needed)
 
+### Subprocess Management for External Agents
+```python
+# Launch external Python scripts with uv
+agent_process = await asyncio.create_subprocess_exec(
+    'uv', 'run', 'agent_script.py', 'input.json',
+    stdout=asyncio.subprocess.PIPE,
+    stderr=asyncio.subprocess.PIPE
+)
+
+# Stream output asynchronously
+async def read_stderr():
+    async for line in agent_process.stderr:
+        line_text = line.decode('utf-8').strip()
+        if line_text.startswith('STATUS:'):
+            progress_callback(line_text[7:].strip())
+
+# Wait with timeout
+await asyncio.wait_for(agent_process.wait(), timeout=300)
+```
+
 ### Audio Playback Patterns
 ```python
 # Stream audio file with miniaudio
@@ -158,6 +213,64 @@ next(gen)  # Prime the generator
 device.start(gen)
 ```
 
+## Strands Agents Integration
+
+### Agent Script Pattern
+```python
+# Create standalone agent script (e.g., floppy_mix_agent.py)
+from strands import Agent, tool
+from strands.models.bedrock import BedrockModel
+
+@tool
+def execute_python_code(code: str) -> str:
+    """Execute Python code and return output."""
+    result = subprocess.run([sys.executable, "-c", code], ...)
+    return result.stdout
+
+# Configure agent with AWS Bedrock
+model = BedrockModel(
+    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    region="us-east-1"
+)
+
+agent = Agent(
+    model=model,
+    system_prompt=SYSTEM_PROMPT,
+    tools=[execute_python_code, write_file, read_file]
+)
+
+# Process request and return JSON response
+result = agent(prompt)
+print(json.dumps({'status': 'success', 'result': result}))
+```
+
+### Agent Client Pattern
+```python
+# Create service to invoke agent (e.g., services/dj_agent_client.py)
+class DJAgentClient:
+    async def create_mix(
+        self,
+        tracks: list[Track],
+        instructions: str,
+        progress_callback: Callable[[str], None] | None = None
+    ) -> str:
+        # Prepare input JSON
+        request_data = {...}
+        
+        # Launch agent subprocess
+        agent_process = await asyncio.create_subprocess_exec(...)
+        
+        # Stream progress updates
+        # Return result path
+```
+
+### Error Handling for AWS Bedrock
+- Check for `UnrecognizedClientException` → API key not configured
+- Check for `security token` or `bearer token` errors → Invalid/expired key
+- Check for `credentials` errors → Missing credentials
+- Check for `don't have access to the model` → Model access not granted
+- Provide user-friendly error messages with actionable steps
+
 ## Performance Considerations
 
 - Target 30 FPS for visualizer updates
@@ -165,3 +278,4 @@ device.start(gen)
 - Debounce expensive operations (FFT calculations, file I/O)
 - Monitor playback state via AudioPlayer.get_state() instead of polling
 - Profile CPU usage and adapt frame rates dynamically
+- Agent operations have 5-minute timeout to prevent hanging

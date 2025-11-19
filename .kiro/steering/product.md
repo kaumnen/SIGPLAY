@@ -24,8 +24,9 @@ Use these exact colors consistently across all UI elements:
 
 ## Layout Structure
 
-The app uses a fixed 3-component layout:
+The app uses a view-switching architecture with two main views:
 
+### Main View (default)
 ```
 ┌─────────────────────────────────────────────────┐
 │ Header (ASCII art logo + volume)                │
@@ -40,11 +41,28 @@ The app uses a fixed 3-component layout:
 └─────────────────────────────────────────────────┘
 ```
 
+### Floppy Mix View (press `f`)
+```
+┌─────────────────────────────────────────────────┐
+│ Header (ASCII art logo + volume)                │
+├─────────────────────────────────────────────────┤
+│ 💾 Floppy Mix              [🎵 Start Mix]       │
+├──────────────────┬──────────────────────────────┤
+│ Track Selection  │ Mixing Instructions          │
+│ (Space to select)│ (Natural language)           │
+│                  │                              │
+├──────────────────┴──────────────────────────────┤
+│ Progress / Preview Controls                     │
+├─────────────────────────────────────────────────┤
+│ Footer (keybindings)                            │
+└─────────────────────────────────────────────────┘
+```
+
 ## Navigation & Keybindings
 
 ### Global Keybindings (work everywhere)
 - `q` - Quit application
-- `space` - Play/Pause
+- `space` - Play/Pause (or toggle mix preview in Floppy Mix)
 - `s` - Stop playback
 - `n` - Next track
 - `p` - Previous track
@@ -52,6 +70,8 @@ The app uses a fixed 3-component layout:
 - `-` - Volume down
 - `m` - Toggle mute
 - `o` - Select audio device (future feature)
+- `f` - Open Floppy Mix view
+- `Escape` - Return to main view (from Floppy Mix)
 
 ### Library View Keybindings (vim-style)
 - `j` - Move down in track list
@@ -96,3 +116,45 @@ The app uses a fixed 3-component layout:
 - **Adaptive**: Adjusts bytes per line based on terminal width (minimum 40 chars)
 - **Responsive**: Recalculates layout on terminal resize
 - **Scrolling**: Auto-scrolls through audio data at 2x speed for visual effect
+
+## Floppy Mix Feature
+
+AI-powered DJ mixing using natural language instructions.
+
+### Workflow
+1. Press `f` to open Floppy Mix view
+2. Select tracks using `Space` key (vim-style `j`/`k` navigation)
+3. Tab to instructions panel and enter natural language mixing instructions
+4. Click "Start Mix" button or press Enter
+5. AI agent analyzes instructions and generates mix using Pedalboard
+6. Mix automatically plays as preview
+7. Save to Music Library or discard
+
+### Natural Language Instructions
+Users can request mixing operations in plain English:
+- "Mix these tracks with smooth crossfades"
+- "Match tempo to 128 BPM and boost the bass"
+- "Create a seamless DJ mix with 4-second transitions"
+- "Add reverb and increase energy"
+
+### Technical Implementation
+- **AI Agent**: Strands Agents with AWS Bedrock (Claude 3.5 Sonnet)
+- **Audio Processing**: Pedalboard library for effects and mixing
+- **Agent Tools**: Python code execution, file I/O
+- **Progress Streaming**: Real-time status updates via stderr
+- **Timeout**: 5-minute maximum for mix generation
+- **Output**: WAV file in `~/.local/share/sigplay/temp_mixes/`
+
+### Error Handling
+- Validates track selection (at least 1 track required)
+- Validates instructions (must replace placeholder text)
+- Checks for AWS Bedrock API key configuration
+- Provides actionable error messages for API/credential issues
+- Handles agent timeouts gracefully
+- Cleans up temporary files on discard or error
+
+### File Management
+- **Temporary mixes**: Stored in `~/.local/share/sigplay/temp_mixes/`
+- **Saved mixes**: Copied to `~/Music` with user-provided filename
+- **Filename validation**: Alphanumeric, spaces, hyphens, underscores only
+- **Auto-cleanup**: Temporary files deleted on discard or view exit

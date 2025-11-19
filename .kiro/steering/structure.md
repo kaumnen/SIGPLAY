@@ -8,14 +8,15 @@ inclusion: always
 
 ```
 sigplay/
-├── main.py              # Entry point: SigplayApp class, global keybindings, logging setup
-├── views/               # Screen implementations (library, now_playing, meters)
-├── widgets/             # Reusable UI components (header)
-├── services/            # Business logic (audio_player, music_library, spectrum_analyzer)
-├── models/              # Data models (Track, Playback, Frequency dataclasses)
-├── styles/              # Textual CSS files (app.tcss)
-├── pyproject.toml       # Dependencies managed by uv
-└── uv.lock              # Locked dependency versions
+├── main.py                  # Entry point: SigplayApp class, global keybindings, logging setup
+├── floppy_mix_agent.py      # Standalone Strands Agent for DJ mixing (invoked via subprocess)
+├── views/                   # Screen implementations (library, now_playing, meters, floppy_mix)
+├── widgets/                 # Reusable UI components (header, track_selection_panel, etc.)
+├── services/                # Business logic (audio_player, music_library, dj_agent_client)
+├── models/                  # Data models (Track, Playback, Frequency, MixRequest dataclasses)
+├── styles/                  # Textual CSS files (app.tcss)
+├── pyproject.toml           # Dependencies managed by uv
+└── uv.lock                  # Locked dependency versions
 ```
 
 ## Architecture Rules
@@ -34,11 +35,16 @@ sigplay/
 ```
 SigplayApp (main.py)
 ├── Header (widgets/header.py)
-├── Vertical (#main-container)
-│   ├── Horizontal (#top-container)
-│   │   ├── LibraryView (views/library.py)
-│   │   └── NowPlayingView (views/now_playing.py)
-│   └── MetersView (views/meters.py)
+├── ContentSwitcher (#view-switcher)
+│   ├── Vertical (#main-view)
+│   │   ├── Horizontal (#top-container)
+│   │   │   ├── LibraryView (views/library.py)
+│   │   │   └── NowPlayingView (views/now_playing.py)
+│   │   └── MetersView (views/meters.py)
+│   └── FloppyMixView (#floppy-mix-view)
+│       ├── TrackSelectionPanel (widgets/track_selection_panel.py)
+│       ├── InstructionsPanel (widgets/instructions_panel.py)
+│       └── MixProgressPanel (widgets/mix_progress_panel.py)
 └── Footer (Textual built-in)
 ```
 
@@ -49,6 +55,18 @@ SigplayApp (main.py)
 - **New service**: Add to `services/` directory for business logic, audio processing, or external integrations
 - **New model**: Add to `models/` directory as dataclass with type hints
 - **New styles**: Add to `styles/app.tcss`, use CSS classes not inline styles
+- **New agent**: Create standalone script at project root (e.g., `floppy_mix_agent.py`) with Strands Agent configuration
+
+### Agent Architecture Pattern
+
+Agents are implemented as standalone Python scripts that:
+- Accept JSON input via command-line argument (file path)
+- Use Strands Agents framework with AWS Bedrock models
+- Define tools using `@tool` decorator for code execution, file I/O, etc.
+- Return JSON response to stdout with `status` and result fields
+- Log to `~/.local/share/sigplay/<agent_name>.log`
+- Are invoked via `uv run` subprocess from service layer
+- Communicate progress via stderr with `STATUS:` prefix messages
 
 ### Import Conventions
 
@@ -88,3 +106,37 @@ from models import Track, Playback
 - Pass services as dependencies to views (dependency injection pattern)
 - Avoid global state except for the main App instance
 - Use dataclasses for structured data passed between components
+
+### Custom Message Pattern
+
+Widgets can define custom messages for parent communication:
+
+```python
+class MyWidget(Widget):
+    class ActionRequested(Message):
+        """Posted when user requests an action."""
+        def __init__(self, data: str) -> None:
+            super().__init__()
+            self.data = data
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.post_message(self.ActionRequested("data"))
+
+# Parent handles message
+def on_my_widget_action_requested(self, event: MyWidget.ActionRequested) -> None:
+    # Handle the action
+    pass
+```
+
+### Cleanup Pattern
+
+Views should implement cleanup methods for resource management:
+
+```python
+class MyView(Container):
+    def cleanup(self) -> None:
+        """Called when view is hidden or app exits."""
+        # Stop playback
+        # Delete temporary files
+        # Reset state
+```
