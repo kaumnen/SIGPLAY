@@ -75,22 +75,22 @@
   - **Property 10: Agent response validity**
   - **Validates: Requirements 5.3**
 
-- [ ] 5. Create DJAgentClient service
-- [ ] 5.1 Implement agent invocation
+- [x] 5. Create DJAgentClient service
+- [x] 5.1 Implement agent invocation
   - Create services/dj_agent_client.py
   - Implement create_mix() method with subprocess management
   - Prepare agent input data (tracks + instructions)
   - Set up agent process with timeout (5 minutes)
   - _Requirements: 5.1, 5.4_
 
-- [ ] 5.2 Implement progress monitoring
+- [x] 5.2 Implement progress monitoring
   - Stream agent output to progress callback
   - Parse agent status messages
   - Handle agent completion and errors
   - Cleanup agent process on completion/timeout
   - _Requirements: 10.2_
 
-- [ ] 5.3 Add error handling
+- [x] 5.3 Add error handling
   - Handle agent startup failures
   - Handle agent timeouts
   - Handle invalid responses
