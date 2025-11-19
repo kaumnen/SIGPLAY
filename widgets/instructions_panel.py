@@ -41,7 +41,6 @@ class InstructionsPanel(Container):
         try:
             self._text_area = self.query_one("#instructions-input", TextArea)
             self._text_area.text = PLACEHOLDER_TEXT
-            self._text_area.focus()
             logger.debug("Instructions panel mounted successfully")
         except Exception as e:
             logger.error(f"Error mounting instructions panel: {e}")

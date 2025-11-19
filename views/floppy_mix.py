@@ -4,7 +4,7 @@ from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
 from textual import events
 from textual.app import ComposeResult
-from textual.widgets import Label, Input, Button
+from textual.widgets import Label, Input, Button, ListView
 from textual.screen import ModalScreen
 from models.mix_request import MixRequest
 from models.track import Track
@@ -40,7 +40,9 @@ class FloppyMixView(Container):
     def compose(self) -> ComposeResult:
         """Compose the view layout."""
         with Vertical(id="floppy-mix-container"):
-            yield Label("💾 Floppy Mix", id="floppy-mix-title")
+            with Horizontal(id="floppy-mix-header"):
+                yield Label("💾 Floppy Mix", id="floppy-mix-title")
+                yield Button("🎵 Start Mix", id="start-mix-button", variant="primary")
             
             with Horizontal(id="floppy-mix-main-content"):
                 yield TrackSelectionPanel([], id="track-panel")
@@ -70,8 +72,19 @@ class FloppyMixView(Container):
             logger.debug(f"Loading {len(tracks)} tracks into Floppy Mix view")
             self._track_panel.refresh_tracks(tracks)
         
-        if self._instructions_panel:
-            self._instructions_panel.focus()
+        if self._progress_panel:
+            self._progress_panel.update_status("Select tracks (Space), add instructions (Tab to switch), then click Start Mix")
+        
+        self.call_after_refresh(self._set_initial_focus)
+    
+    def _set_initial_focus(self) -> None:
+        """Set focus to track panel after view is fully rendered."""
+        try:
+            track_list = self.query_one("#track-list", ListView)
+            track_list.focus()
+            logger.debug("Set initial focus to track list")
+        except Exception as e:
+            logger.error(f"Error setting initial focus: {e}")
         
     def cleanup(self) -> None:
         """Cleanup resources when view is hidden."""
@@ -114,15 +127,23 @@ class FloppyMixView(Container):
                 logger.warning(f"Failed to delete temporary mix file: {e}")
         
     def on_key(self, event: events.Key) -> None:
-        """Handle keyboard events (Enter, Space)."""
-        if event.key == "enter" and self.mixing_state == "idle":
-            logger.debug("Enter key pressed, starting mix")
-            self.app.call_later(self.start_mixing)
-            event.prevent_default()
-            event.stop()
-        elif event.key == "space" and self.mixing_state == "previewing":
+        """Handle keyboard events (Space, Escape)."""
+        if event.key == "space" and self.mixing_state == "previewing":
             logger.debug("Space key pressed during preview, toggling playback")
             self._toggle_preview_playback()
+            event.prevent_default()
+            event.stop()
+        elif event.key == "escape":
+            logger.debug("Escape key pressed, returning to main view")
+            self.app.action_back_to_main()
+            event.prevent_default()
+            event.stop()
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "start-mix-button":
+            logger.debug("Start mix button pressed")
+            self.app.call_later(self.start_mixing)
             event.prevent_default()
             event.stop()
     
