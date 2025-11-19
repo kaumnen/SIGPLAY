@@ -13,17 +13,16 @@ import logging
 import shutil
 import re
 
-from .track_selection_panel import TrackSelectionPanel
-from .instructions_panel import InstructionsPanel
-from .mix_progress_panel import MixProgressPanel
+from widgets.track_selection_panel import TrackSelectionPanel
+from widgets.instructions_panel import InstructionsPanel
+from widgets.mix_progress_panel import MixProgressPanel
 
 logger = logging.getLogger(__name__)
 
 
-class FloppyMixDialog(Container):
-    """Modal dialog for Floppy Mix interface."""
+class FloppyMixView(Container):
+    """Full-screen view for Floppy Mix interface."""
     
-    is_visible: reactive[bool] = reactive(False)
     mixing_state: reactive[str] = reactive("idle")
     
     def __init__(self, audio_player, music_library, *args, **kwargs):
@@ -31,7 +30,7 @@ class FloppyMixDialog(Container):
         self.audio_player = audio_player
         self.music_library = music_library
         self._mix_file_path: str | None = None
-        self._was_playing_before_dialog: bool = False
+        self._was_playing_before_view: bool = False
         self._previous_track = None
         
         self._track_panel: TrackSelectionPanel | None = None
@@ -39,13 +38,12 @@ class FloppyMixDialog(Container):
         self._progress_panel: MixProgressPanel | None = None
     
     def compose(self) -> ComposeResult:
-        """Compose the dialog layout."""
-        with Vertical(id="dialog-container"):
-            yield Label("💾 Floppy Mix", id="dialog-title")
+        """Compose the view layout."""
+        with Vertical(id="floppy-mix-container"):
+            yield Label("💾 Floppy Mix", id="floppy-mix-title")
             
-            with Horizontal(id="dialog-main-content"):
-                tracks = self.music_library.get_tracks()
-                yield TrackSelectionPanel(tracks, id="track-panel")
+            with Horizontal(id="floppy-mix-main-content"):
+                yield TrackSelectionPanel([], id="track-panel")
                 yield InstructionsPanel(id="instructions-panel")
             
             yield MixProgressPanel(id="progress-panel")
@@ -56,32 +54,29 @@ class FloppyMixDialog(Container):
             self._track_panel = self.query_one("#track-panel", TrackSelectionPanel)
             self._instructions_panel = self.query_one("#instructions-panel", InstructionsPanel)
             self._progress_panel = self.query_one("#progress-panel", MixProgressPanel)
-            logger.debug("Dialog panels mounted successfully")
+            logger.debug("Floppy Mix view panels mounted successfully")
         except Exception as e:
-            logger.error(f"Error mounting dialog panels: {e}")
+            logger.error(f"Error mounting view panels: {e}")
     
-    def show(self) -> None:
-        """Display the dialog as modal overlay."""
-        logger.debug("Showing Floppy Mix dialog")
+    def on_show(self) -> None:
+        """Called when view becomes visible."""
+        logger.debug("Showing Floppy Mix view")
         
-        self._was_playing_before_dialog = self.audio_player.is_playing()
+        self._was_playing_before_view = self.audio_player.is_playing()
         self._previous_track = self.audio_player.get_current_track()
         
-        self.is_visible = True
-        self.display = True
+        if self._track_panel:
+            tracks = self.music_library.get_tracks()
+            logger.debug(f"Loading {len(tracks)} tracks into Floppy Mix view")
+            self._track_panel.refresh_tracks(tracks)
         
         if self._instructions_panel:
             self._instructions_panel.focus()
         
-    def hide(self) -> None:
-        """Close the dialog and cleanup."""
-        logger.debug("Hiding Floppy Mix dialog")
-        self.is_visible = False
-        self.display = False
-        self._cleanup()
+    def cleanup(self) -> None:
+        """Cleanup resources when view is hidden."""
+        logger.debug("Cleaning up Floppy Mix view")
         
-    def _cleanup(self) -> None:
-        """Cleanup resources when dialog closes."""
         if self._mix_file_path and self.mixing_state == "previewing":
             logger.debug("Cleaning up mix preview")
             self._stop_preview_playback()
@@ -119,13 +114,8 @@ class FloppyMixDialog(Container):
                 logger.warning(f"Failed to delete temporary mix file: {e}")
         
     def on_key(self, event: events.Key) -> None:
-        """Handle keyboard events (Escape, Enter, Space)."""
-        if event.key == "escape":
-            logger.debug("Escape key pressed, closing dialog")
-            self.hide()
-            event.prevent_default()
-            event.stop()
-        elif event.key == "enter" and self.mixing_state == "idle":
+        """Handle keyboard events (Enter, Space)."""
+        if event.key == "enter" and self.mixing_state == "idle":
             logger.debug("Enter key pressed, starting mix")
             self.app.call_later(self.start_mixing)
             event.prevent_default()
@@ -175,7 +165,7 @@ class FloppyMixDialog(Container):
             Error message if validation fails, None if valid.
         """
         if not self._track_panel or not self._instructions_panel:
-            return "Dialog not properly initialized"
+            return "View not properly initialized"
         
         selected_tracks = self._track_panel.get_selected_tracks()
         if not selected_tracks:
@@ -189,7 +179,7 @@ class FloppyMixDialog(Container):
         return None
     
     def _create_mix_request(self) -> MixRequest | None:
-        """Create a MixRequest from current dialog state.
+        """Create a MixRequest from current view state.
         
         Returns:
             MixRequest object or None if validation fails.
@@ -359,7 +349,7 @@ class FloppyMixDialog(Container):
             )
             
             self._mix_file_path = None
-            self.hide()
+            self.app.action_back_to_main()
             
         except PermissionError as e:
             logger.error(f"Permission denied saving mix: {e}")
@@ -408,7 +398,7 @@ class FloppyMixDialog(Container):
         return filename
     
     def _discard_mix(self) -> None:
-        """Discard the generated mix and reset dialog."""
+        """Discard the generated mix and reset view."""
         if not self._mix_file_path:
             logger.debug("No mix to discard")
             return
@@ -435,14 +425,7 @@ class FloppyMixDialog(Container):
             self._progress_panel.update_status("Ready to mix")
         
         self.app.notify("Mix discarded", severity="information")
-        logger.debug("Mix discarded and dialog reset")
-    
-    def watch_is_visible(self, visible: bool) -> None:
-        """React to visibility changes."""
-        if visible:
-            self.add_class("visible")
-        else:
-            self.remove_class("visible")
+        logger.debug("Mix discarded and view reset")
 
 
 class FilenamePromptScreen(ModalScreen[str | None]):

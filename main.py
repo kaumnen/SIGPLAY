@@ -1,15 +1,13 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Footer
+from textual.widgets import Footer, ContentSwitcher
 from textual.containers import Horizontal, Vertical
 from textual.binding import Binding
 import asyncio
 import logging
 from pathlib import Path
 
-from widgets import Header, FloppyMixDialog
-from views.library import LibraryView
-from views.now_playing import NowPlayingView
-from views.meters import MetersView
+from widgets import Header
+from views import LibraryView, NowPlayingView, MetersView, FloppyMixView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 
@@ -48,6 +46,7 @@ class SigplayApp(App):
         Binding("m", "toggle_mute", "Mute"),
         Binding("o", "select_device", "Device"),
         Binding("f", "show_floppy_mix", "Floppy Mix"),
+        Binding("escape", "back_to_main", "Back", priority=True),
     ]
     
     def __init__(self, *args, **kwargs):
@@ -68,14 +67,15 @@ class SigplayApp(App):
         """Compose the main application layout."""
         yield Header()
         
-        with Vertical(id="main-container"):
-            with Horizontal(id="top-container"):
-                yield LibraryView(self.music_library, self.audio_player, id="library")
-                yield NowPlayingView(self.audio_player, id="now_playing")
+        with ContentSwitcher(id="view-switcher", initial="main-view"):
+            with Vertical(id="main-view"):
+                with Horizontal(id="top-container"):
+                    yield LibraryView(self.music_library, self.audio_player, id="library")
+                    yield NowPlayingView(self.audio_player, id="now_playing")
+                
+                yield MetersView(self.audio_player, id="meters")
             
-            yield MetersView(self.audio_player, id="meters")
-        
-        yield FloppyMixDialog(self.audio_player, self.music_library, id="floppy-mix-dialog")
+            yield FloppyMixView(self.audio_player, self.music_library, id="floppy-mix-view")
         
         yield Footer()
     
@@ -264,13 +264,32 @@ class SigplayApp(App):
         self.notify("Audio device selection coming soon!", severity="information")
     
     def action_show_floppy_mix(self) -> None:
-        """Show the Floppy Mix dialog."""
+        """Show the Floppy Mix view."""
         try:
-            dialog = self.query_one("#floppy-mix-dialog", FloppyMixDialog)
-            dialog.show()
+            switcher = self.query_one("#view-switcher", ContentSwitcher)
+            switcher.current = "floppy-mix-view"
+            
+            floppy_mix_view = self.query_one("#floppy-mix-view", FloppyMixView)
+            floppy_mix_view.on_show()
         except Exception as e:
-            logger.error(f"Error showing Floppy Mix dialog: {e}")
-            self.notify("❌ Cannot open Floppy Mix dialog", severity="error")
+            logger.error(f"Error showing Floppy Mix view: {e}")
+            self.notify("❌ Cannot open Floppy Mix view", severity="error")
+    
+    def action_back_to_main(self) -> None:
+        """Return to main view from Floppy Mix."""
+        try:
+            switcher = self.query_one("#view-switcher", ContentSwitcher)
+            
+            if switcher.current == "floppy-mix-view":
+                floppy_mix_view = self.query_one("#floppy-mix-view", FloppyMixView)
+                floppy_mix_view.cleanup()
+                
+                switcher.current = "main-view"
+                
+                library_view = self.query_one("#library", LibraryView)
+                library_view.focus()
+        except Exception as e:
+            logger.error(f"Error returning to main view: {e}")
 
 
 def main():

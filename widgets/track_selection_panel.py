@@ -27,30 +27,31 @@ class TrackSelectionPanel(Container):
         """Yield ListView with tracks."""
         with Vertical(id="track-selection-container"):
             yield Label("Select Tracks (j/k to navigate, Space to select)", id="track-selection-label")
-            
-            if not self.tracks:
-                yield Static("No tracks available", id="no-tracks-message")
-            else:
-                yield ListView(id="track-list")
+            yield ListView(id="track-list")
     
     def on_mount(self) -> None:
         """Populate track list on mount."""
-        if self.tracks:
-            self._populate_tracks()
+        self._populate_tracks()
     
     def _populate_tracks(self) -> None:
         """Populate the ListView with tracks."""
         try:
             track_list = self.query_one("#track-list", ListView)
             track_list.clear()
+            self._track_items.clear()
+            
+            if not self.tracks:
+                no_tracks_item = ListItem(Static("No tracks available"))
+                track_list.append(no_tracks_item)
+                logger.debug("No tracks to populate")
+                return
             
             for idx, track in enumerate(self.tracks):
                 self._track_items[idx] = track
                 item = ListItem(Static(f"  {track.title} - {track.artist}"))
-                item.id = f"track-item-{idx}"
                 track_list.append(item)
             
-            if self.tracks:
+            if len(self.tracks) > 0:
                 track_list.index = 0
                 self._cursor_index = 0
                 
@@ -144,21 +145,22 @@ class TrackSelectionPanel(Container):
             track_list = self.query_one("#track-list", ListView)
             
             for idx, track in self._track_items.items():
-                item_id = f"track-item-{idx}"
                 try:
-                    item = self.query_one(f"#{item_id}", ListItem)
-                    static = item.query_one(Static)
-                    
-                    if idx in self._selected_indices:
-                        prefix = "✓ "
-                        item.add_class("selected")
-                    else:
-                        prefix = "  "
-                        item.remove_class("selected")
-                    
-                    static.update(f"{prefix}{track.title} - {track.artist}")
+                    if idx < len(track_list.children):
+                        item = track_list.children[idx]
+                        if isinstance(item, ListItem):
+                            static = item.query_one(Static)
+                            
+                            if idx in self._selected_indices:
+                                prefix = "✓ "
+                                item.add_class("selected")
+                            else:
+                                prefix = "  "
+                                item.remove_class("selected")
+                            
+                            static.update(f"{prefix}{track.title} - {track.artist}")
                 except Exception as e:
-                    logger.debug(f"Could not update item {item_id}: {e}")
+                    logger.debug(f"Could not update item at index {idx}: {e}")
                     
         except Exception as e:
             logger.error(f"Error updating visual indicators: {e}")
@@ -173,3 +175,13 @@ class TrackSelectionPanel(Container):
         self.selected_tracks = []
         self._update_visual_indicators()
         logger.debug("Cleared all track selections")
+    
+    def refresh_tracks(self, tracks: list[Track]) -> None:
+        """Refresh the track list with new tracks."""
+        logger.debug(f"Refreshing track list with {len(tracks)} tracks")
+        self.tracks = tracks
+        self._track_items = {}
+        self._selected_indices = set()
+        self._cursor_index = 0
+        self.selected_tracks = []
+        self._populate_tracks()
