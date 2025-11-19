@@ -327,5 +327,4 @@ class DJAgentClient:
             
         except asyncio.TimeoutError:
             stderr_task.cancel()
-            stdout_task.cancel()
             raise

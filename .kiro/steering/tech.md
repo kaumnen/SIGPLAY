@@ -273,6 +273,23 @@ def apply_effects(
     return f"✓ Applied effects to {track_id}"
 
 @tool
+def change_tempo(track_id: str, speed_factor: float) -> str:
+    """Change playback speed/tempo without changing pitch."""
+    # Implementation using librosa time_stretch
+    return f"✓ Changed tempo of {track_id}: {speed_factor}x speed"
+
+@tool
+def add_track_to_mix(
+    track_id: str,
+    crossfade_duration: float = 0.0,
+    start_time: float = 0.0,
+    end_time: float | None = None
+) -> str:
+    """Add a processed track to the final mix with optional crossfade."""
+    # Implementation with crossfade logic
+    return f"✓ Added {track_id} to mix"
+
+@tool
 def render_final_mix(output_path: str, normalize: bool = True) -> str:
     """Render and save the final mix."""
     # Implementation using soundfile
@@ -280,7 +297,7 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
 
 # Configure agent with OpenRouter (OpenAI-compatible)
 api_key = os.environ.get('OPENROUTER_API_KEY')
-model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-sonnet-4.5')
+model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-haiku-4.5')
 
 model = OpenAIModel(
     client_args={
@@ -294,7 +311,7 @@ model = OpenAIModel(
 agent = Agent(
     model=model,
     system_prompt=SYSTEM_PROMPT,
-    tools=[load_audio_track, apply_effects, render_final_mix]
+    tools=[load_audio_track, apply_effects, change_tempo, add_track_to_mix, render_final_mix]
 )
 
 # Process request - agent calls tools directly
@@ -373,9 +390,9 @@ When writing system prompts for agents:
 - `OPENROUTER_API_KEY` (required): API key from https://openrouter.ai/keys
   - Can be set via environment variable or provided at runtime via modal prompt
   - Session-level API keys stored in app state for current session only
-- `OPENROUTER_MODEL` (optional): Model to use (default: `anthropic/claude-sonnet-4.5`)
+- `OPENROUTER_MODEL` (optional): Model to use (default: `anthropic/claude-haiku-4.5`)
   - Available models: https://openrouter.ai/models
-  - Examples: `anthropic/claude-sonnet-4.5`, `minimax/minimax-m2`, `openai/gpt-4`, `meta-llama/llama-3.1-70b-instruct`
+  - Examples: `anthropic/claude-haiku-4.5`, `anthropic/claude-sonnet-4.5`, `minimax/minimax-m2`, `openai/gpt-4`, `meta-llama/llama-3.1-70b-instruct`
 
 ## Performance Considerations
 

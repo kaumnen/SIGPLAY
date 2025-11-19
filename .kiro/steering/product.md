@@ -151,14 +151,7 @@ Users can configure OpenRouter in two ways:
 2. **Runtime prompt** (session-only): Enter API key when prompted on first use
 
 Optional environment variable:
-- `OPENROUTER_MODEL`: Model to use (optional, default: `anthropic/claude-sonnet-4.5`)
-
-Available models include:
-- `anthropic/claude-sonnet-4.5` (default, recommended for quality)
-- `minimax/minimax-m2` (cost-effective alternative)
-- `openai/gpt-4`
-- `meta-llama/llama-3.1-70b-instruct`
-- See full list: https://openrouter.ai/models
+- `OPENROUTER_MODEL`: Model to use (optional, default: `anthropic/claude-haiku-4.5`)
 
 ### API Key Prompt
 If no API key is configured, the app displays a modal prompt:
