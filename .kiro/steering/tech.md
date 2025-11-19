@@ -254,17 +254,29 @@ device.start(gen)
 from strands import Agent, tool
 from strands.models.openai import OpenAIModel
 
+# Define domain-specific tools using @tool decorator
 @tool
-def execute_python_code(code: str) -> str:
-    """Execute Python code and return output."""
-    # Use uv run to execute code with proper dependencies
-    result = subprocess.run(
-        ["uv", "run", "python", temp_script.name],
-        capture_output=True,
-        text=True,
-        timeout=300
-    )
-    return result.stdout
+def load_audio_track(track_path: str, track_id: str) -> str:
+    """Load an audio track into memory for processing."""
+    # Implementation using pedalboard, numpy, etc.
+    return f"✓ Loaded {track_id}: duration, sample_rate, channels"
+
+@tool
+def apply_effects(
+    track_id: str,
+    reverb_room_size: float = 0.0,
+    compressor_threshold_db: float = 0.0,
+    gain_db: float = 0.0
+) -> str:
+    """Apply audio effects to a loaded track."""
+    # Implementation using Pedalboard effects
+    return f"✓ Applied effects to {track_id}"
+
+@tool
+def render_final_mix(output_path: str, normalize: bool = True) -> str:
+    """Render and save the final mix."""
+    # Implementation using soundfile
+    return f"✓ Mix saved to {output_path}"
 
 # Configure agent with OpenRouter (OpenAI-compatible)
 api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -282,10 +294,10 @@ model = OpenAIModel(
 agent = Agent(
     model=model,
     system_prompt=SYSTEM_PROMPT,
-    tools=[execute_python_code, write_file, read_file]
+    tools=[load_audio_track, apply_effects, render_final_mix]
 )
 
-# Process request and return JSON response
+# Process request - agent calls tools directly
 result = agent(prompt)
 print(json.dumps({'status': 'success', 'result': result}))
 ```
@@ -342,12 +354,12 @@ class DJAgentClient:
 ### Agent System Prompt Best Practices
 
 When writing system prompts for agents:
-- **Be explicit about file handling**: Specify "work entirely in memory, no intermediate files"
-- **Provide code structure examples**: Show the expected pattern for the task
-- **List available tools**: Enumerate what the agent can do (file I/O, code execution, etc.)
-- **Specify output format**: Define exactly what should be returned (file path, JSON structure, etc.)
-- **Include error handling guidance**: Tell agent how to handle common failure cases
-- **Use CRITICAL/IMPORTANT markers**: Highlight key requirements that must not be violated
+- **Describe the workflow**: Explain the sequence of tool calls needed
+- **List available tools**: Document each tool with parameters and purpose
+- **Provide examples**: Show typical tool call sequences for common scenarios
+- **Map user intent to tools**: Guide how to interpret natural language into tool parameters
+- **Include best practices**: Share domain expertise (e.g., "use 2-4 second crossfades")
+- **Keep it concise**: Focus on tool usage, not implementation details
 
 ### Error Handling for OpenRouter
 - Check for `OPENROUTER_API_KEY` → API key not configured (prompt user with modal)

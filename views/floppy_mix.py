@@ -37,9 +37,14 @@ class FloppyMixView(Container):
     def compose(self) -> ComposeResult:
         """Compose the view layout."""
         with Vertical(id="floppy-mix-container"):
-            with Horizontal(id="floppy-mix-header"):
-                yield Label("💾 Floppy Mix", id="floppy-mix-title")
-                yield Button("🎵 Start Mix", id="start-mix-button", variant="primary")
+            with Vertical(id="floppy-mix-header"):
+                with Horizontal(id="floppy-mix-title-row"):
+                    yield Label("💾 Floppy Mix", id="floppy-mix-title")
+                    yield Button("🎵 Start Mix", id="start-mix-button", variant="primary")
+                yield Label(
+                    "AI-powered DJ mixing: Create seamless mixes • Match tempos • Add DJ effects • Smart transitions",
+                    id="floppy-mix-capabilities"
+                )
             
             with Horizontal(id="floppy-mix-main-content"):
                 yield TrackSelectionPanel([], id="track-panel")

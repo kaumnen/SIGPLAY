@@ -201,7 +201,13 @@ FloppyMixView {
     border: solid #cc5500;
     padding: 1;
     margin-bottom: 1;
+}
+
+#floppy-mix-title-row {
+    width: 100%;
+    height: auto;
     align: left middle;
+    margin-bottom: 1;
 }
 
 #floppy-mix-title {
@@ -211,6 +217,15 @@ FloppyMixView {
     background: #2d2d2d;
     width: 1fr;
     padding: 0 1;
+}
+
+#floppy-mix-capabilities {
+    color: #ffb347;
+    text-align: center;
+    background: #1a1a1a;
+    width: 100%;
+    padding: 1;
+    border: solid #cc5500;
 }
 
 #floppy-mix-main-content {

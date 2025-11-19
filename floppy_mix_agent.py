@@ -11,12 +11,16 @@ import sys
 import os
 import tempfile
 import logging
-import subprocess
+import numpy as np
+import soundfile as sf
 from pathlib import Path
 from datetime import datetime
 
 from strands import Agent, tool
 from strands.models.openai import OpenAIModel
+from pedalboard import Pedalboard, Reverb, Compressor, Chorus, Delay, HighpassFilter, LowpassFilter, Gain
+from pedalboard.io import AudioFile
+import librosa
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -31,142 +35,338 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-@tool
-def execute_python_code(code: str) -> str:
-    """Execute Python code and return the output.
-    
-    Args:
-        code: Python code to execute
-        
-    Returns:
-        The output from executing the code
-    """
-    try:
-        temp_script = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
-        try:
-            temp_script.write(code)
-            temp_script.close()
-            
-            result = subprocess.run(
-                ["uv", "run", "python", temp_script.name],
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            
-            output = result.stdout
-            if result.stderr:
-                output += f"\nSTDERR:\n{result.stderr}"
-            
-            if result.returncode != 0:
-                return f"Error (exit code {result.returncode}):\n{output}"
-            
-            return output if output else "Code executed successfully (no output)"
-        finally:
-            Path(temp_script.name).unlink(missing_ok=True)
-        
-    except subprocess.TimeoutExpired:
-        return "Error: Code execution timed out after 5 minutes"
-    except Exception as e:
-        return f"Error executing code: {str(e)}"
+_audio_cache = {}
+_mix_segments = []
 
 
 @tool
-def write_file(path: str, content: str) -> str:
-    """Write content to a file.
+def load_audio_track(track_path: str, track_id: str) -> str:
+    """Load an audio track into memory for processing.
     
     Args:
-        path: Path to the file
-        content: Content to write
+        track_path: Path to the audio file (MP3, WAV, OGG, FLAC)
+        track_id: Unique identifier for this track (e.g., 'track_1', 'track_2')
         
     Returns:
-        Success message
+        Success message with track info (duration, sample rate, channels)
     """
     try:
-        file_path = Path(path)
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content)
-        return f"Successfully wrote {len(content)} characters to {path}"
+        logger.info(f"Loading track: {track_path} as {track_id}")
+        
+        with AudioFile(track_path) as f:
+            audio = f.read(f.frames)
+            sample_rate = f.samplerate
+            
+        _audio_cache[track_id] = {
+            'audio': audio,
+            'sample_rate': sample_rate,
+            'path': track_path
+        }
+        
+        duration = audio.shape[1] / sample_rate
+        channels = audio.shape[0]
+        
+        logger.info(f"Loaded {track_id}: {duration:.1f}s, {sample_rate}Hz, {channels}ch")
+        return f"✓ Loaded {track_id}: {duration:.1f}s, {sample_rate}Hz, {channels} channels"
+        
     except Exception as e:
-        return f"Error writing file: {str(e)}"
+        logger.error(f"Failed to load {track_path}: {e}")
+        return f"✗ Error loading {track_path}: {str(e)}"
 
 
 @tool
-def read_file(path: str) -> str:
-    """Read content from a file.
+def apply_effects(
+    track_id: str,
+    reverb_room_size: float = 0.0,
+    compressor_threshold_db: float = 0.0,
+    chorus_rate_hz: float = 0.0,
+    delay_seconds: float = 0.0,
+    highpass_cutoff_hz: float = 0.0,
+    lowpass_cutoff_hz: float = 0.0,
+    gain_db: float = 0.0
+) -> str:
+    """Apply audio effects to a loaded track.
     
     Args:
-        path: Path to the file
+        track_id: ID of the loaded track to process
+        reverb_room_size: Reverb room size (0.0-1.0, 0=off)
+        compressor_threshold_db: Compressor threshold in dB (0=off, typical: -20 to -10)
+        chorus_rate_hz: Chorus rate in Hz (0=off, typical: 1-5)
+        delay_seconds: Delay time in seconds (0=off, typical: 0.1-0.5)
+        highpass_cutoff_hz: High-pass filter cutoff in Hz (0=off, typical: 80-200)
+        lowpass_cutoff_hz: Low-pass filter cutoff in Hz (0=off, typical: 8000-15000)
+        gain_db: Gain adjustment in dB (0=no change, positive=louder, negative=quieter)
         
     Returns:
-        File content
+        Success message with applied effects
     """
     try:
-        return Path(path).read_text()
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded. Load it first with load_audio_track."
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        effects = []
+        applied = []
+        
+        if highpass_cutoff_hz > 0:
+            effects.append(HighpassFilter(cutoff_frequency_hz=highpass_cutoff_hz))
+            applied.append(f"highpass {highpass_cutoff_hz}Hz")
+        
+        if lowpass_cutoff_hz > 0:
+            effects.append(LowpassFilter(cutoff_frequency_hz=lowpass_cutoff_hz))
+            applied.append(f"lowpass {lowpass_cutoff_hz}Hz")
+        
+        if compressor_threshold_db < 0:
+            effects.append(Compressor(threshold_db=compressor_threshold_db))
+            applied.append(f"compressor {compressor_threshold_db}dB")
+        
+        if reverb_room_size > 0:
+            effects.append(Reverb(room_size=reverb_room_size))
+            applied.append(f"reverb {reverb_room_size}")
+        
+        if chorus_rate_hz > 0:
+            effects.append(Chorus(rate_hz=chorus_rate_hz))
+            applied.append(f"chorus {chorus_rate_hz}Hz")
+        
+        if delay_seconds > 0:
+            effects.append(Delay(delay_seconds=delay_seconds))
+            applied.append(f"delay {delay_seconds}s")
+        
+        if gain_db != 0:
+            effects.append(Gain(gain_db=gain_db))
+            applied.append(f"gain {gain_db:+.1f}dB")
+        
+        if effects:
+            board = Pedalboard(effects)
+            processed_audio = board(audio, sample_rate)
+            track_data['audio'] = processed_audio
+            logger.info(f"Applied effects to {track_id}: {', '.join(applied)}")
+            return f"✓ Applied to {track_id}: {', '.join(applied)}"
+        else:
+            return f"✓ No effects applied to {track_id} (all parameters at default)"
+        
     except Exception as e:
-        return f"Error reading file: {str(e)}"
+        logger.error(f"Failed to apply effects to {track_id}: {e}")
+        return f"✗ Error applying effects to {track_id}: {str(e)}"
+
+
+@tool
+def change_tempo(track_id: str, speed_factor: float) -> str:
+    """Change the playback speed/tempo of a track without changing pitch.
+    
+    Args:
+        track_id: ID of the loaded track to process
+        speed_factor: Speed multiplier (1.0=normal, 1.5=50% faster, 0.8=20% slower)
+        
+    Returns:
+        Success message with new duration
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded. Load it first with load_audio_track."
+        
+        if speed_factor <= 0:
+            return f"✗ Error: speed_factor must be positive (got {speed_factor})"
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        original_duration = audio.shape[1] / sample_rate
+        
+        stretched_audio = librosa.effects.time_stretch(audio, rate=speed_factor)
+        
+        track_data['audio'] = stretched_audio
+        
+        new_duration = stretched_audio.shape[1] / sample_rate
+        
+        logger.info(f"Changed tempo of {track_id}: {speed_factor}x speed ({original_duration:.1f}s → {new_duration:.1f}s)")
+        return f"✓ Changed tempo of {track_id}: {speed_factor}x speed ({original_duration:.1f}s → {new_duration:.1f}s)"
+        
+    except Exception as e:
+        logger.error(f"Failed to change tempo of {track_id}: {e}")
+        return f"✗ Error changing tempo of {track_id}: {str(e)}"
+
+
+@tool
+def add_track_to_mix(
+    track_id: str,
+    crossfade_duration: float = 0.0,
+    start_time: float = 0.0,
+    end_time: float | None = None
+) -> str:
+    """Add a processed track to the final mix with optional crossfade.
+    
+    Args:
+        track_id: ID of the loaded track to add
+        crossfade_duration: Crossfade duration in seconds (0=no crossfade)
+        start_time: Start time in track (seconds, 0=beginning)
+        end_time: End time in track (seconds, None=full track)
+        
+    Returns:
+        Success message with segment info
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio'].copy()
+        sample_rate = track_data['sample_rate']
+        
+        start_sample = int(start_time * sample_rate)
+        end_sample = int(end_time * sample_rate) if end_time else audio.shape[1]
+        
+        audio = audio[:, start_sample:end_sample]
+        
+        _mix_segments.append({
+            'audio': audio,
+            'sample_rate': sample_rate,
+            'crossfade_duration': crossfade_duration,
+            'track_id': track_id
+        })
+        
+        duration = audio.shape[1] / sample_rate
+        logger.info(f"Added {track_id} to mix: {duration:.1f}s, crossfade={crossfade_duration}s")
+        return f"✓ Added {track_id} to mix: {duration:.1f}s (crossfade: {crossfade_duration}s)"
+        
+    except Exception as e:
+        logger.error(f"Failed to add {track_id} to mix: {e}")
+        return f"✗ Error adding {track_id} to mix: {str(e)}"
+
+
+@tool
+def render_final_mix(output_path: str, normalize: bool = True) -> str:
+    """Render the final mix by concatenating all segments with crossfades.
+    
+    Args:
+        output_path: Path where the final mix WAV file will be saved
+        normalize: Whether to normalize audio to prevent clipping (recommended: True)
+        
+    Returns:
+        Success message with output file path and duration
+    """
+    try:
+        if not _mix_segments:
+            return "✗ Error: No tracks added to mix. Use add_track_to_mix first."
+        
+        logger.info(f"Rendering final mix with {len(_mix_segments)} segments")
+        
+        final_audio = None
+        sample_rate = _mix_segments[0]['sample_rate']
+        
+        for i, segment in enumerate(_mix_segments):
+            audio = segment['audio']
+            crossfade_duration = segment['crossfade_duration']
+            
+            if final_audio is None:
+                final_audio = audio
+            else:
+                if crossfade_duration > 0:
+                    crossfade_samples = int(crossfade_duration * sample_rate)
+                    crossfade_samples = min(crossfade_samples, final_audio.shape[1], audio.shape[1])
+                    
+                    if crossfade_samples > 0:
+                        fade_out = np.linspace(1, 0, crossfade_samples)
+                        fade_in = np.linspace(0, 1, crossfade_samples)
+                        
+                        overlap_end = final_audio[:, -crossfade_samples:]
+                        overlap_start = audio[:, :crossfade_samples]
+                        
+                        crossfaded = overlap_end * fade_out + overlap_start * fade_in
+                        
+                        final_audio = np.concatenate([
+                            final_audio[:, :-crossfade_samples],
+                            crossfaded,
+                            audio[:, crossfade_samples:]
+                        ], axis=1)
+                    else:
+                        final_audio = np.concatenate([final_audio, audio], axis=1)
+                else:
+                    final_audio = np.concatenate([final_audio, audio], axis=1)
+        
+        if normalize:
+            max_val = np.max(np.abs(final_audio))
+            if max_val > 0:
+                final_audio = final_audio / max_val * 0.95
+        
+        output_file = Path(output_path)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        sf.write(str(output_file), final_audio.T, sample_rate)
+        
+        duration = final_audio.shape[1] / sample_rate
+        file_size = output_file.stat().st_size
+        
+        logger.info(f"Mix rendered: {output_path} ({duration:.1f}s, {file_size} bytes)")
+        return f"✓ Mix saved to {output_path} ({duration:.1f}s, {file_size / 1024 / 1024:.1f}MB)"
+        
+    except Exception as e:
+        logger.error(f"Failed to render mix: {e}")
+        return f"✗ Error rendering mix: {str(e)}"
 
 DJ_AGENT_SYSTEM_PROMPT = """You are an expert DJ and audio engineer with deep knowledge of music mixing and audio processing.
 
-Your role is to create professional DJ mixes using Python and the Pedalboard library.
+Your role is to create professional DJ mixes using the provided audio processing tools.
 
-CRITICAL: You must write a SINGLE Python script that:
-1. Loads ALL audio files into memory first
-2. Processes them in memory (no intermediate files)
-3. Concatenates them with crossfades
-4. Saves ONLY the final output file
+WORKFLOW:
+1. Load each track using load_audio_track(track_path, track_id)
+2. Apply effects to each track using apply_effects(track_id, ...)
+3. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
+4. Render the final mix using render_final_mix(output_path)
 
-DO NOT create intermediate files like "temp_mix_step_01.mp3" - work entirely in memory using numpy arrays.
+AVAILABLE TOOLS:
 
-Example structure:
-```python
-import soundfile as sf
-import numpy as np
-from pedalboard import Pedalboard, Reverb, Compressor
-from pedalboard.io import AudioFile
+1. load_audio_track(track_path, track_id)
+   - Loads an audio file into memory
+   - Use track_id like 'track_1', 'track_2', etc.
 
-# Load all tracks
-tracks_audio = []
-for track_path in ['/path/to/track1.mp3', '/path/to/track2.mp3']:
-    with AudioFile(track_path) as f:
-        audio = f.read(f.frames)
-        sr = f.samplerate
-        tracks_audio.append((audio, sr))
+2. apply_effects(track_id, reverb_room_size, compressor_threshold_db, chorus_rate_hz, delay_seconds, highpass_cutoff_hz, lowpass_cutoff_hz, gain_db)
+   - Apply audio effects to a loaded track
+   - All parameters are optional (0 = off)
+   - Examples:
+     * Boost bass: highpass_cutoff_hz=0, lowpass_cutoff_hz=0, gain_db=3
+     * Add reverb: reverb_room_size=0.5
+     * Compress: compressor_threshold_db=-15
+     * Brighten: highpass_cutoff_hz=100
 
-# Process and mix in memory
-final_audio = []
-for i, (audio, sr) in enumerate(tracks_audio):
-    # Apply effects
-    board = Pedalboard([Compressor(threshold_db=-10)])
-    processed = board(audio, sr)
-    
-    # Add crossfade if not first track
-    if i > 0 and len(final_audio) > 0:
-        crossfade_samples = int(3.0 * sr)  # 3 second crossfade
-        # Implement crossfade logic
-    
-    final_audio.append(processed)
+3. change_tempo(track_id, speed_factor)
+   - Change playback speed without changing pitch
+   - speed_factor: 1.0=normal, 1.5=50% faster, 0.8=20% slower
+   - Examples:
+     * Speed up: speed_factor=1.2 (20% faster)
+     * Slow down: speed_factor=0.8 (20% slower)
 
-# Concatenate and save
-final_mix = np.concatenate(final_audio, axis=1)
-sf.write('/output/path.wav', final_mix.T, sr)
-```
+4. add_track_to_mix(track_id, crossfade_duration, start_time, end_time)
+   - Add a processed track to the final mix
+   - crossfade_duration: seconds to blend with previous track (typical: 2-4)
+   - start_time/end_time: optional trimming (in seconds)
 
-Available capabilities:
-- Load audio files (MP3, WAV, OGG, FLAC) using pedalboard.io.AudioFile
-- Apply effects: reverb, chorus, delay, compression, EQ
-- Create crossfade transitions for smooth playback
-- Normalize audio levels to prevent clipping
+5. render_final_mix(output_path, normalize)
+   - Render and save the final mix
+   - normalize=True prevents clipping (recommended)
 
-Best practices:
-- Load all audio into memory first
-- Process in memory using numpy arrays
-- Use 2-4 second crossfades between tracks
-- Normalize final output
-- Save only the final mix file
+MIXING BEST PRACTICES:
+- Use 2-4 second crossfades for smooth transitions
+- Apply compression (threshold -15 to -10 dB) for consistent volume
+- Use subtle reverb (room_size 0.2-0.5) for cohesion
+- Normalize the final output to prevent clipping
+- Match energy levels between tracks with gain adjustments
 
-Return the full path to the generated mix file when complete.
+EXAMPLE WORKFLOW:
+1. load_audio_track('/path/track1.mp3', 'track_1')
+2. apply_effects('track_1', compressor_threshold_db=-12, gain_db=2)
+3. add_track_to_mix('track_1', crossfade_duration=0)
+4. load_audio_track('/path/track2.mp3', 'track_2')
+5. change_tempo('track_2', speed_factor=1.2)  # Speed up by 20%
+6. apply_effects('track_2', reverb_room_size=0.3, compressor_threshold_db=-12)
+7. add_track_to_mix('track_2', crossfade_duration=3.0)
+8. render_final_mix('/output/mix.wav', normalize=True)
+
+Interpret the user's natural language instructions and translate them into appropriate tool calls.
 """
 
 
@@ -179,7 +379,7 @@ def create_dj_agent() -> Agent:
             "Get your API key from https://openrouter.ai/keys"
         )
     
-    model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-sonnet-4.5')
+    model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-haiku-4.5')
     
     model = OpenAIModel(
         client_args={
@@ -193,7 +393,7 @@ def create_dj_agent() -> Agent:
     agent = Agent(
         model=model,
         system_prompt=DJ_AGENT_SYSTEM_PROMPT,
-        tools=[execute_python_code, write_file, read_file]
+        tools=[load_audio_track, apply_effects, change_tempo, add_track_to_mix, render_final_mix]
     )
     
     return agent
@@ -214,6 +414,10 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
     Raises:
         Exception: If mixing fails
     """
+    global _audio_cache, _mix_segments
+    _audio_cache = {}
+    _mix_segments = []
+    
     print("STATUS: Analyzing mixing instructions...", file=sys.stderr, flush=True)
     logger.info("Starting mix request processing")
     
@@ -240,51 +444,39 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
     logger.info(f"Output path: {output_path}")
     
     track_list = "\n".join([
-        f"  - {track['title']} by {track.get('artist', 'Unknown')} ({track['path']})"
-        for track in tracks
+        f"  {i+1}. {track['title']} by {track.get('artist', 'Unknown')} - {track['path']}"
+        for i, track in enumerate(tracks)
     ])
     
-    prompt = f"""
-Create a DJ mix with the following {len(tracks)} track(s):
+    prompt = f"""Create a DJ mix with these {len(tracks)} track(s):
+
 {track_list}
 
 User instructions: {instructions}
 
-CRITICAL REQUIREMENTS:
-1. Write a SINGLE Python script that works entirely in memory
-2. DO NOT create any intermediate files (no temp_mix_step_01.mp3, etc.)
-3. Load all tracks into memory first using pedalboard.io.AudioFile
-4. Process and mix in memory using numpy arrays
-5. Save ONLY the final output to: {output_path}
+Output file: {output_path}
 
-Your task:
-1. Load all audio files into memory as numpy arrays
-2. Apply effects/processing to each track in memory
-3. Concatenate tracks with crossfade transitions (2-4 seconds)
-4. Normalize the final mix to prevent clipping
-5. Save the final mix to the specified path
+Use the available tools to:
+1. Load each track with load_audio_track(path, 'track_1'), load_audio_track(path, 'track_2'), etc.
+2. Apply effects based on the user's instructions using apply_effects()
+3. Add each track to the mix with add_track_to_mix() (use 2-4 second crossfades)
+4. Render the final mix with render_final_mix('{output_path}', normalize=True)
 
-Technical requirements:
-- Use pedalboard.io.AudioFile to load audio files
-- Use numpy for array operations and concatenation
-- Use soundfile (sf.write) to save the final output
-- Apply crossfades by blending overlapping audio samples
-- Normalize using: audio = audio / np.max(np.abs(audio)) * 0.95
-- Handle errors gracefully with clear messages
+Interpret the user's instructions and apply appropriate effects. If they mention:
+- "speed up" or "faster": use change_tempo with speed_factor=1.2-1.5
+- "slow down" or "slower": use change_tempo with speed_factor=0.7-0.9
+- "boost bass" or "more bass": use gain_db=3-5
+- "smooth" or "reverb": use reverb_room_size=0.3-0.5
+- "compress" or "consistent volume": use compressor_threshold_db=-12 to -15
+- "bright" or "crisp": use highpass_cutoff_hz=100-150
+- "warm": use lowpass_cutoff_hz=10000-12000
+- "crossfade" or "blend": use crossfade_duration=3-4 seconds
 
-Example crossfade logic:
-```python
-crossfade_samples = int(3.0 * sample_rate)
-fade_out = np.linspace(1, 0, crossfade_samples)
-fade_in = np.linspace(0, 1, crossfade_samples)
-# Apply fades to overlapping regions
-```
-
-Begin by writing and executing the Python code to create the mix.
+Start by loading all tracks, then apply tempo changes if needed, then apply effects, then add them to the mix, and finally render.
 """
     
-    print("STATUS: Generating mixing plan...", file=sys.stderr, flush=True)
-    logger.info("Invoking agent to generate mixing plan")
+    print("STATUS: Processing tracks...", file=sys.stderr, flush=True)
+    logger.info("Invoking agent to process tracks")
     
     try:
         import io
@@ -292,15 +484,15 @@ Begin by writing and executing the Python code to create the mix.
         
         stdout_capture = io.StringIO()
         with contextlib.redirect_stdout(stdout_capture):
-            agent(prompt)
+            agent_result = agent(prompt)
         
         captured_output = stdout_capture.getvalue()
         if captured_output:
-            logger.info(f"Agent stdout: {captured_output[:500]}")
+            logger.info(f"Agent conversational output: {captured_output[:200]}...")
         
-        logger.info("Agent execution completed")
+        logger.info(f"Agent execution completed with result: {agent_result}")
         
-        print("STATUS: Rendering final mix...", file=sys.stderr, flush=True)
+        print("STATUS: Finalizing mix...", file=sys.stderr, flush=True)
         
         if output_path.exists():
             file_size = output_path.stat().st_size
@@ -310,10 +502,11 @@ Begin by writing and executing the Python code to create the mix.
                 logger.error(f"Mix file too small: {file_size} bytes")
                 raise Exception(f"Generated mix file is too small ({file_size} bytes), likely invalid")
             
-            print(f"Mix created successfully: {output_path} ({file_size} bytes)", file=sys.stderr, flush=True)
+            print(f"STATUS: Mix created successfully: {output_path} ({file_size} bytes)", file=sys.stderr, flush=True)
             return str(output_path)
         else:
             logger.error(f"Mix file not created at: {output_path}")
+            logger.error(f"Agent result was: {agent_result}")
             raise Exception(f"Mix file was not created at expected location: {output_path}")
             
     except Exception as e:
@@ -328,6 +521,9 @@ Begin by writing and executing the Python code to create the mix.
         
         print(f"ERROR: Agent execution failed: {e}", file=sys.stderr, flush=True)
         raise Exception(f"Failed to create mix: {str(e)}")
+    finally:
+        _audio_cache = {}
+        _mix_segments = []
 
 
 def main():

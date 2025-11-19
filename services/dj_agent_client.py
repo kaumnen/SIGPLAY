@@ -238,7 +238,6 @@ class DJAgentClient:
                     stdout_data.append(data)
         
         stderr_task = asyncio.create_task(read_stderr())
-        stdout_task = asyncio.create_task(read_stdout())
         
         try:
             await asyncio.wait_for(
@@ -246,7 +245,9 @@ class DJAgentClient:
                 timeout=self.AGENT_TIMEOUT
             )
             
-            await asyncio.gather(stderr_task, stdout_task)
+            await stderr_task
+            
+            await read_stdout()
             
             if agent_process.returncode != 0:
                 error_details = '\n'.join(stderr_lines[-5:]) if stderr_lines else 'Unknown error'
@@ -292,10 +293,19 @@ class DJAgentClient:
             
             stdout = b''.join(stdout_data).decode('utf-8')
             
+            if not stdout or not stdout.strip():
+                logger.error("Agent returned empty stdout")
+                error_details = '\n'.join(stderr_lines[-10:]) if stderr_lines else 'No error details'
+                raise AgentError(
+                    f"DJ agent returned no output. This may indicate an internal error.\n"
+                    f"Recent logs:\n{error_details}"
+                )
+            
             try:
                 response = json.loads(stdout)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse agent response: {e}")
+                logger.error(f"Stdout content: {stdout[:500]}")
                 raise AgentError(f"Invalid response from DJ agent: {str(e)}")
             
             if response.get('status') == 'error':
