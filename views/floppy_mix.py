@@ -77,10 +77,13 @@ class FloppyMixView(Container):
         self.call_after_refresh(self._set_initial_focus)
     
     def _set_initial_focus(self) -> None:
-        """Set focus to track panel after view is fully rendered."""
-        if self._track_panel:
-            self._track_panel.focus()
-            logger.debug("Set initial focus to track panel")
+        """Set focus to track list after view is fully rendered."""
+        try:
+            track_list = self.query_one("#track-list")
+            track_list.focus()
+            logger.debug("Set initial focus to track list")
+        except Exception as e:
+            logger.error(f"Failed to set initial focus: {e}")
         
     def cleanup(self) -> None:
         """Cleanup resources when view is hidden."""

@@ -27,7 +27,7 @@ class TrackSelectionPanel(Container):
         """Yield ListView with tracks."""
         with Vertical(id="track-selection-container"):
             yield Label("Select Tracks (j/k to navigate, Space to select)", id="track-selection-label")
-            yield ListView(id="track-list")
+            yield ListView(id="track-list", classes="scrollable-list")
     
     def on_mount(self) -> None:
         """Populate track list on mount."""
@@ -112,6 +112,14 @@ class TrackSelectionPanel(Container):
             logger.debug(f"ListView selected index {self._cursor_index}")
         except Exception as e:
             logger.error(f"Error handling list view selection: {e}")
+    
+    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        """Update display when cursor moves to show arrows."""
+        if not self.tracks or event.list_view.index is None:
+            return
+        
+        self._cursor_index = event.list_view.index
+        self._update_visual_indicators()
         
     def toggle_track_selection(self, track: Track) -> None:
         """Add or remove track from selection."""
@@ -140,7 +148,7 @@ class TrackSelectionPanel(Container):
             logger.error(f"Error toggling track selection: {e}")
     
     def _update_visual_indicators(self) -> None:
-        """Update visual indicators for selected tracks."""
+        """Update visual indicators for selected tracks and cursor position."""
         try:
             track_list = self.query_one("#track-list", ListView)
             
@@ -151,14 +159,27 @@ class TrackSelectionPanel(Container):
                         if isinstance(item, ListItem):
                             static = item.query_one(Static)
                             
-                            if idx in self._selected_indices:
-                                prefix = "✓ "
+                            is_selected = idx in self._selected_indices
+                            is_highlighted = idx == self._cursor_index
+                            
+                            if is_selected and is_highlighted:
+                                prefix = "▶ ✓"
+                                suffix = " ◀"
                                 item.add_class("selected")
+                            elif is_selected:
+                                prefix = "  ✓"
+                                suffix = "  "
+                                item.add_class("selected")
+                            elif is_highlighted:
+                                prefix = "▶  "
+                                suffix = " ◀"
+                                item.remove_class("selected")
                             else:
-                                prefix = "  "
+                                prefix = "   "
+                                suffix = "  "
                                 item.remove_class("selected")
                             
-                            static.update(f"{prefix}{track.title} - {track.artist}")
+                            static.update(f"{prefix} {track.title} - {track.artist}{suffix}")
                 except Exception as e:
                     logger.debug(f"Could not update item at index {idx}: {e}")
                     
