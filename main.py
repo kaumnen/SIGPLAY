@@ -308,22 +308,25 @@ class SigplayApp(App):
         
         return bool(os.environ.get('OPENROUTER_API_KEY'))
     
-    def _handle_openrouter_key_input(self, api_key: str | None) -> None:
-        """Handle API key input from prompt screen.
+    def _handle_openrouter_key_input(self, result: tuple[str, str] | None) -> None:
+        """Handle API key and model ID input from prompt screen.
         
         Args:
-            api_key: The API key entered by user, or None if cancelled.
+            result: Tuple of (api_key, model_id) entered by user, or None if cancelled.
         """
-        if not api_key:
-            logger.debug("OpenRouter API key prompt cancelled by user")
+        if not result:
+            logger.debug("OpenRouter configuration prompt cancelled by user")
             self.notify("Floppy Mix requires OpenRouter API key", severity="information")
             return
         
+        api_key, model_id = result
+        
         self._session_openrouter_key = api_key
         os.environ['OPENROUTER_API_KEY'] = api_key
-        logger.info("Session OpenRouter API key set successfully")
+        os.environ['SIGPLAY_MIX_MODEL_ID'] = model_id
+        logger.info(f"Session OpenRouter credentials set: model={model_id}")
         
-        self.notify("✓ API key set for this session", severity="information", timeout=2)
+        self.notify("✓ Configuration set for this session", severity="information", timeout=2)
         self._show_floppy_mix_view()
     
     def _show_floppy_mix_view(self) -> None:
@@ -365,16 +368,15 @@ class SigplayApp(App):
             self.notify("❌ Cannot show help", severity="error")
 
 
-class OpenRouterKeyPromptScreen(ModalScreen[str | None]):
-    """Modal screen to prompt user for OpenRouter API key."""
+class OpenRouterKeyPromptScreen(ModalScreen[tuple[str, str] | None]):
+    """Modal screen to prompt user for OpenRouter API key and model ID."""
     
     def compose(self) -> ComposeResult:
         """Compose the API key prompt."""
         with Container(id="openrouter-key-prompt-container"):
-            yield Label("🔑 OpenRouter API Key Required", id="openrouter-key-prompt-title")
+            yield Label("🔑 OpenRouter Configuration", id="openrouter-key-prompt-title")
             yield Label(
-                "Floppy Mix uses OpenRouter for AI DJ mixing.\n"
-                "Enter your API key for this session:",
+                "Floppy Mix uses OpenRouter for AI DJ mixing.\nEnter your API key for this session:",
                 id="openrouter-key-prompt-label"
             )
             yield Input(
@@ -384,10 +386,23 @@ class OpenRouterKeyPromptScreen(ModalScreen[str | None]):
                 disabled=False
             )
             yield Label(
+                "Model ID (optional):",
+                id="openrouter-model-label"
+            )
+            yield Input(
+                value="anthropic/claude-haiku-4.5",
+                placeholder="anthropic/claude-haiku-4.5",
+                id="openrouter-model-input",
+                disabled=False
+            )
+            yield Label(
                 "💡 To generate an API key:\n"
                 "1. Go to https://openrouter.ai/keys\n"
                 "2. Sign in or create an account\n"
-                "3. Generate a new API key",
+                "3. Generate a new API key\n\n"
+                "💡 You can also set these environment variables:\n"
+                "   OPENROUTER_API_KEY\n"
+                "   SIGPLAY_MIX_MODEL_ID",
                 id="openrouter-key-help-text"
             )
             with Horizontal(id="openrouter-key-prompt-buttons"):
@@ -410,16 +425,35 @@ class OpenRouterKeyPromptScreen(ModalScreen[str | None]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "openrouter-key-confirm-button":
-            input_widget = self.query_one("#openrouter-key-input", Input)
-            api_key = input_widget.value.strip()
-            self.dismiss(api_key if api_key else None)
+            api_key_input = self.query_one("#openrouter-key-input", Input)
+            model_input = self.query_one("#openrouter-model-input", Input)
+            
+            api_key = api_key_input.value.strip()
+            model_id = model_input.value.strip()
+            
+            if api_key:
+                self.dismiss((api_key, model_id if model_id else "anthropic/claude-haiku-4.5"))
+            else:
+                self.dismiss(None)
         elif event.button.id == "openrouter-key-cancel-button":
             self.dismiss(None)
     
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle Enter key in input."""
-        api_key = event.value.strip()
-        self.dismiss(api_key if api_key else None)
+        if event.input.id == "openrouter-key-input":
+            model_input = self.query_one("#openrouter-model-input", Input)
+            model_input.focus()
+        elif event.input.id == "openrouter-model-input":
+            api_key_input = self.query_one("#openrouter-key-input", Input)
+            model_input = self.query_one("#openrouter-model-input", Input)
+            
+            api_key = api_key_input.value.strip()
+            model_id = model_input.value.strip()
+            
+            if api_key:
+                self.dismiss((api_key, model_id if model_id else "anthropic/claude-haiku-4.5"))
+            else:
+                self.dismiss(None)
 
 
 def main():
