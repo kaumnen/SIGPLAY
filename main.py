@@ -13,6 +13,23 @@ from views import LibraryView, NowPlayingView, MetersView, FloppyMixView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 
+
+class MainViewContainer(Vertical):
+    """Container for the main view."""
+    
+    def __init__(self, music_library, audio_player, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.music_library = music_library
+        self.audio_player = audio_player
+    
+    def compose(self) -> ComposeResult:
+        """Compose the main view layout."""
+        with Horizontal(id="top-container"):
+            yield LibraryView(self.music_library, self.audio_player, id="library")
+            yield NowPlayingView(self.audio_player, id="now_playing")
+        
+        yield MetersView(self.audio_player, id="meters")
+
 TRACK_END_CHECK_INTERVAL = 0.5
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
@@ -37,19 +54,19 @@ class SigplayApp(App):
     
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True),
-        Binding("space", "play_pause", "Play/Pause"),
-        Binding("s", "stop", "Stop"),
-        Binding("n", "next_track", "Next"),
-        Binding("p", "previous_track", "Prev"),
-        Binding("+", "volume_up", "Vol+"),
-        Binding("=", "volume_up", "Vol+", show=False),
-        Binding("-", "volume_down", "Vol-"),
-        Binding("m", "toggle_mute", "Mute"),
-        Binding("o", "select_device", "Device"),
-        Binding("f", "show_floppy_mix", "Floppy Mix"),
-        Binding("d", "back_to_main", "Default View"),
-        Binding("h", "show_help", "Help"),
-        Binding("?", "show_help", "Help", show=False),
+        Binding("space", "play_pause", "Play/Pause", priority=True),
+        Binding("s", "stop", "Stop", priority=True),
+        Binding("n", "next_track", "Next", priority=True),
+        Binding("p", "previous_track", "Prev", priority=True),
+        Binding("+", "volume_up", "Vol+", priority=True),
+        Binding("=", "volume_up", "Vol+", show=False, priority=True),
+        Binding("-", "volume_down", "Vol-", priority=True),
+        Binding("m", "toggle_mute", "Mute", priority=True),
+        Binding("f", "show_floppy_mix", "Floppy Mix Page", priority=True),
+        Binding("d", "back_to_main", "Default Page", priority=True),
+        Binding("o", "select_device", "Device", priority=True),
+        Binding("h", "show_help", "Help", priority=True),
+        Binding("?", "show_help", "Help", show=False, priority=True),
     ]
     
     def __init__(self, *args, **kwargs):
@@ -72,13 +89,7 @@ class SigplayApp(App):
         yield Header()
         
         with ContentSwitcher(id="view-switcher", initial="main-view"):
-            with Vertical(id="main-view"):
-                with Horizontal(id="top-container"):
-                    yield LibraryView(self.music_library, self.audio_player, id="library")
-                    yield NowPlayingView(self.audio_player, id="now_playing")
-                
-                yield MetersView(self.audio_player, id="meters")
-            
+            yield MainViewContainer(self.music_library, self.audio_player, id="main-view")
             yield FloppyMixView(self.audio_player, self.music_library, id="floppy-mix-view")
         
         yield Footer()

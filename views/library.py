@@ -1,5 +1,6 @@
 import logging
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.widgets import ListView, ListItem, Label
 from textual.containers import Container
 
@@ -10,9 +11,9 @@ class LibraryView(Container):
     """Library view displaying a list of music tracks with vim navigation."""
     
     BINDINGS = [
-        ("j", "move_down", "Move down"),
-        ("k", "move_up", "Move up"),
-        ("enter", "select_track", "Play track"),
+        Binding("j", "move_down", "Move down", show=False),
+        Binding("k", "move_up", "Move up", show=False),
+        Binding("enter", "select_track", "Play track", show=False),
     ]
     
     def __init__(self, music_library, audio_player, *args, **kwargs):
