@@ -235,6 +235,17 @@ class FloppyMixView(Container):
             self._progress_panel.show_preview_controls()
         
         self._start_preview_playback()
+        
+        self.call_after_refresh(self._focus_save_button)
+    
+    def _focus_save_button(self) -> None:
+        """Focus the save button after mix completes."""
+        try:
+            save_button = self.query_one("#save-button", Button)
+            save_button.focus()
+            logger.debug("Focused save button after mix completion")
+        except Exception as e:
+            logger.error(f"Failed to focus save button: {e}")
     
     def _start_preview_playback(self) -> None:
         """Load and automatically play the generated mix file."""
@@ -356,6 +367,9 @@ class FloppyMixView(Container):
             )
             
             self._mix_file_path = None
+            
+            self.app.run_worker(self._refresh_library_after_save, exclusive=False)
+            
             self.app.action_back_to_main()
             
         except PermissionError as e:
@@ -404,6 +418,26 @@ class FloppyMixView(Container):
         
         return filename
     
+    async def _refresh_library_after_save(self) -> None:
+        """Rescan music library and refresh both views after saving a mix."""
+        try:
+            logger.info("Rescanning music library after mix save")
+            
+            import asyncio
+            tracks = await asyncio.to_thread(self.music_library.scan)
+            
+            library_view = self.app.query_one("#library")
+            library_view.tracks = tracks
+            library_view._populate_list()
+            
+            if self._track_panel:
+                self._track_panel.refresh_tracks(tracks)
+            
+            logger.info(f"Library refreshed with {len(tracks)} tracks")
+            
+        except Exception as e:
+            logger.error(f"Error refreshing library after save: {e}")
+    
     def _discard_mix(self) -> None:
         """Discard the generated mix and reset view."""
         if not self._mix_file_path:
@@ -446,8 +480,10 @@ class FilenamePromptScreen(ModalScreen[str | None]):
             yield Label("💾 Save Mix", id="filename-prompt-title")
             yield Label("Enter a name for your mix:", id="filename-prompt-label")
             yield Input(
+                value="",
                 placeholder="my_awesome_mix",
-                id="filename-input"
+                id="filename-input",
+                disabled=False
             )
             with Horizontal(id="filename-prompt-buttons"):
                 yield Button("Save", id="save-confirm-button", variant="success")
@@ -475,8 +511,3 @@ class FilenamePromptScreen(ModalScreen[str | None]):
         """Handle Enter key in input."""
         filename = event.value.strip()
         self.dismiss(filename if filename else None)
-    
-    def on_key(self, event: events.Key) -> None:
-        """Prevent key events from propagating to parent app."""
-        if event.key not in ("escape",):
-            event.stop()
