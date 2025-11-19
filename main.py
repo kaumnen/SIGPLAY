@@ -161,6 +161,12 @@ class SigplayApp(App):
         """
         try:
             if self.audio_player.track_ended_naturally():
+                current_track = self.audio_player.get_current_track()
+                
+                if current_track and current_track.title == "Floppy Mix Preview":
+                    logger.debug("Mix preview ended, not auto-advancing")
+                    return
+                
                 logger.debug("Track ended naturally, advancing to next")
                 self.audio_player.next_track()
                 library_view = self.query_one("#library", LibraryView)

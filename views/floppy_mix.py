@@ -366,7 +366,19 @@ class FloppyMixView(Container):
                 timeout=5
             )
             
+            self._stop_preview_playback()
+            
+            self._delete_temp_mix_file()
+            
             self._mix_file_path = None
+            self.mixing_state = "idle"
+            
+            if self._track_panel:
+                self._track_panel.clear_selection()
+            if self._instructions_panel:
+                self._instructions_panel.clear()
+            if self._progress_panel:
+                self._progress_panel.hide_preview_controls()
             
             self.app.run_worker(self._refresh_library_after_save, exclusive=False)
             
@@ -459,6 +471,8 @@ class FloppyMixView(Container):
         
         if self._track_panel:
             self._track_panel.clear_selection()
+        if self._instructions_panel:
+            self._instructions_panel.clear()
         if self._progress_panel:
             self._progress_panel.hide_preview_controls()
             self._progress_panel.update_status("Ready to mix")
