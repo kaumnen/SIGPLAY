@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from textual.containers import Container, Horizontal, Vertical
-from textual.reactive import reactive
 from textual.widgets import Static, Button, LoadingIndicator
 from textual.app import ComposeResult
 from textual.message import Message
@@ -12,9 +11,6 @@ logger = logging.getLogger(__name__)
 
 class MixProgressPanel(Container):
     """Bottom panel for progress and controls."""
-    
-    status_message: reactive[str] = reactive("", init=False)
-    show_controls: reactive[bool] = reactive(False, init=False)
     
     class SaveRequested(Message):
         """Message sent when save button is pressed."""
@@ -57,14 +53,12 @@ class MixProgressPanel(Container):
     
     def update_status(self, message: str) -> None:
         """Update the status message."""
-        self.status_message = message
         if self._status_display:
             self._status_display.update(message)
         logger.debug(f"Status updated: {message}")
     
     def show_preview_controls(self) -> None:
         """Display save/discard buttons."""
-        self.show_controls = True
         if self._controls_container:
             self._controls_container.display = True
         if self._loading_indicator:
@@ -73,7 +67,6 @@ class MixProgressPanel(Container):
     
     def hide_preview_controls(self) -> None:
         """Hide save/discard buttons."""
-        self.show_controls = False
         if self._controls_container:
             self._controls_container.display = False
         logger.debug("Hiding preview controls")
@@ -96,13 +89,3 @@ class MixProgressPanel(Container):
         elif event.button.id == "discard-button":
             logger.debug("Discard button pressed")
             self.post_message(self.DiscardRequested())
-    
-    def watch_status_message(self, message: str) -> None:
-        """React to status message changes."""
-        if self._status_display:
-            self._status_display.update(message)
-    
-    def watch_show_controls(self, show: bool) -> None:
-        """React to show_controls changes."""
-        if self._controls_container:
-            self._controls_container.display = show

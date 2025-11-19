@@ -138,17 +138,39 @@ Users can request mixing operations in plain English:
 - "Add reverb and increase energy"
 
 ### Technical Implementation
-- **AI Agent**: Strands Agents with AWS Bedrock (Claude 3.5 Sonnet)
+- **AI Agent**: Strands Agents with OpenRouter (user-selectable models)
 - **Audio Processing**: Pedalboard library for effects and mixing
 - **Agent Tools**: Python code execution, file I/O
 - **Progress Streaming**: Real-time status updates via stderr
 - **Timeout**: 5-minute maximum for mix generation
 - **Output**: WAV file in `~/.local/share/sigplay/temp_mixes/`
 
+### Configuration
+Users can configure OpenRouter in two ways:
+1. **Environment variable** (persistent): Set `OPENROUTER_API_KEY` in shell profile
+2. **Runtime prompt** (session-only): Enter API key when prompted on first use
+
+Optional environment variable:
+- `OPENROUTER_MODEL`: Model to use (optional, default: `anthropic/claude-sonnet-4.5`)
+
+Available models include:
+- `anthropic/claude-sonnet-4.5` (default, recommended for quality)
+- `minimax/minimax-m2` (cost-effective alternative)
+- `openai/gpt-4`
+- `meta-llama/llama-3.1-70b-instruct`
+- See full list: https://openrouter.ai/models
+
+### API Key Prompt
+If no API key is configured, the app displays a modal prompt:
+- User can paste API key for current session only
+- Includes instructions for generating keys at https://openrouter.ai/keys
+- Can cancel to exit Floppy Mix feature
+- Session keys are not persisted to disk
+
 ### Error Handling
 - Validates track selection (at least 1 track required)
 - Validates instructions (must replace placeholder text)
-- Checks for AWS Bedrock API key configuration
+- Checks for OpenRouter API key configuration
 - Provides actionable error messages for API/credential issues
 - Handles agent timeouts gracefully
 - Cleans up temporary files on discard or error
@@ -156,5 +178,6 @@ Users can request mixing operations in plain English:
 ### File Management
 - **Temporary mixes**: Stored in `~/.local/share/sigplay/temp_mixes/`
 - **Saved mixes**: Copied to `~/Music` with user-provided filename
-- **Filename validation**: Alphanumeric, spaces, hyphens, underscores only
+- **Filename validation**: Alphanumeric, spaces, hyphens, underscores only (regex: `^[a-zA-Z0-9_\-\s]+$`)
+- **Filename sanitization**: Spaces converted to underscores, `.wav` extension auto-added
 - **Auto-cleanup**: Temporary files deleted on discard or view exit

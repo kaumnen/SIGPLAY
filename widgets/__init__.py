@@ -5,7 +5,6 @@ from .mix_progress_panel import MixProgressPanel
 
 __all__ = [
     "Header",
-    "FloppyMixDialog",
     "TrackSelectionPanel",
     "InstructionsPanel",
     "MixProgressPanel",

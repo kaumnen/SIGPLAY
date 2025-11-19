@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Dict, Any, List, Optional
 import logging
 
 from mutagen import File as MutagenFile
@@ -15,16 +16,16 @@ class MusicLibrary:
     SUPPORTED_EXTENSIONS = {'.mp3', '.flac', '.wav', '.ogg', '.m4a'}
     DEFAULT_MUSIC_DIR = Path.home() / "Music"
     
-    def __init__(self, music_dir: Optional[Path] = None):
+    def __init__(self, music_dir: Path | None = None):
         """Initialize MusicLibrary with optional custom music directory.
         
         Args:
             music_dir: Path to music directory. Defaults to ~/Music if not provided.
         """
         self.music_dir = music_dir or self.DEFAULT_MUSIC_DIR
-        self._tracks: List[Track] = []
+        self._tracks: list[Track] = []
     
-    def scan(self) -> List[Track]:
+    def scan(self) -> list[Track]:
         """Scan music directory for audio files and build track list.
         
         Returns:
@@ -81,7 +82,7 @@ class MusicLibrary:
                 f"Please check directory permissions."
             ) from e
     
-    def get_tracks(self) -> List[Track]:
+    def get_tracks(self) -> list[Track]:
         """Return cached track list.
         
         Returns:
@@ -90,7 +91,7 @@ class MusicLibrary:
         return self._tracks
     
     @staticmethod
-    def _extract_metadata(file_path: Path) -> Dict[str, Any]:
+    def _extract_metadata(file_path: Path) -> dict[str, any]:
         """Extract metadata from audio file using mutagen.
         
         Args:

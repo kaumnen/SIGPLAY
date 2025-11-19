@@ -442,3 +442,74 @@ FilenamePromptScreen {
 #start-mix-button:focus {
     border: thick #ffb347;
 }
+
+OpenRouterKeyPromptScreen {
+    align: center middle;
+}
+
+#openrouter-key-prompt-container {
+    width: 70;
+    height: auto;
+    background: #1a1a1a;
+    border: thick #ff8c00;
+    padding: 2;
+}
+
+#openrouter-key-prompt-title {
+    color: #ff8c00;
+    text-style: bold;
+    text-align: center;
+    background: #2d2d2d;
+    padding: 1;
+    border: solid #cc5500;
+    margin-bottom: 1;
+}
+
+#openrouter-key-prompt-label {
+    color: #fff8dc;
+    text-align: center;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+#openrouter-key-input {
+    width: 100%;
+    height: 3;
+    background: #0a0a0a;
+    color: #fff8dc;
+    border: solid #cc5500;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+#openrouter-key-input:focus {
+    border: solid #ff8c00;
+}
+
+Input {
+    background: #0a0a0a;
+    color: #fff8dc;
+}
+
+#openrouter-key-help-text {
+    color: #ffb347;
+    text-align: left;
+    padding: 1;
+    margin-bottom: 1;
+    background: #0a0a0a;
+    border: solid #cc5500;
+}
+
+#openrouter-key-prompt-buttons {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+#openrouter-key-confirm-button {
+    margin-right: 2;
+}
+
+#openrouter-key-cancel-button {
+    margin-left: 2;
+}

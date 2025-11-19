@@ -8,6 +8,7 @@ and generates professional DJ mixes using the Pedalboard audio processing librar
 
 import json
 import sys
+import os
 import tempfile
 import logging
 import subprocess
@@ -15,7 +16,7 @@ from pathlib import Path
 from datetime import datetime
 
 from strands import Agent, tool
-from strands.models.bedrock import BedrockModel
+from strands.models.openai import OpenAIModel
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -42,21 +43,28 @@ def execute_python_code(code: str) -> str:
         The output from executing the code
     """
     try:
-        result = subprocess.run(
-            [sys.executable, "-c", code],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        
-        output = result.stdout
-        if result.stderr:
-            output += f"\nSTDERR:\n{result.stderr}"
-        
-        if result.returncode != 0:
-            return f"Error (exit code {result.returncode}):\n{output}"
-        
-        return output if output else "Code executed successfully (no output)"
+        temp_script = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+        try:
+            temp_script.write(code)
+            temp_script.close()
+            
+            result = subprocess.run(
+                ["uv", "run", "python", temp_script.name],
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            output = result.stdout
+            if result.stderr:
+                output += f"\nSTDERR:\n{result.stderr}"
+            
+            if result.returncode != 0:
+                return f"Error (exit code {result.returncode}):\n{output}"
+            
+            return output if output else "Code executed successfully (no output)"
+        finally:
+            Path(temp_script.name).unlink(missing_ok=True)
         
     except subprocess.TimeoutExpired:
         return "Error: Code execution timed out after 5 minutes"
@@ -103,37 +111,83 @@ DJ_AGENT_SYSTEM_PROMPT = """You are an expert DJ and audio engineer with deep kn
 
 Your role is to create professional DJ mixes using Python and the Pedalboard library.
 
-When you receive a mixing request, you should:
-1. Analyze the user's instructions and understand their intent
-2. Plan the mixing approach (tempo matching, EQ adjustments, transitions, effects)
-3. Write Python code using Pedalboard to execute the mix
-4. Handle errors gracefully and provide clear feedback
+CRITICAL: You must write a SINGLE Python script that:
+1. Loads ALL audio files into memory first
+2. Processes them in memory (no intermediate files)
+3. Concatenates them with crossfades
+4. Saves ONLY the final output file
+
+DO NOT create intermediate files like "temp_mix_step_01.mp3" - work entirely in memory using numpy arrays.
+
+Example structure:
+```python
+import soundfile as sf
+import numpy as np
+from pedalboard import Pedalboard, Reverb, Compressor
+from pedalboard.io import AudioFile
+
+# Load all tracks
+tracks_audio = []
+for track_path in ['/path/to/track1.mp3', '/path/to/track2.mp3']:
+    with AudioFile(track_path) as f:
+        audio = f.read(f.frames)
+        sr = f.samplerate
+        tracks_audio.append((audio, sr))
+
+# Process and mix in memory
+final_audio = []
+for i, (audio, sr) in enumerate(tracks_audio):
+    # Apply effects
+    board = Pedalboard([Compressor(threshold_db=-10)])
+    processed = board(audio, sr)
+    
+    # Add crossfade if not first track
+    if i > 0 and len(final_audio) > 0:
+        crossfade_samples = int(3.0 * sr)  # 3 second crossfade
+        # Implement crossfade logic
+    
+    final_audio.append(processed)
+
+# Concatenate and save
+final_mix = np.concatenate(final_audio, axis=1)
+sf.write('/output/path.wav', final_mix.T, sr)
+```
 
 Available capabilities:
-- Load audio files (MP3, WAV, OGG, FLAC)
-- Adjust tempo/BPM without changing pitch
-- Apply EQ (bass, mid, treble adjustments)
-- Create crossfade transitions for gapless playback
-- Apply effects: reverb, chorus, delay, phaser, compression
-- Render final mix to WAV file
+- Load audio files (MP3, WAV, OGG, FLAC) using pedalboard.io.AudioFile
+- Apply effects: reverb, chorus, delay, compression, EQ
+- Create crossfade transitions for smooth playback
+- Normalize audio levels to prevent clipping
 
 Best practices:
-- Always normalize audio levels to prevent clipping
-- Use appropriate crossfade durations (2-4 seconds typical)
-- Match tempos when user requests specific BPM
-- Boost bass frequencies by 2-4 dB when user requests "more bass"
-- Create smooth transitions between tracks
-- Save output to the specified directory with timestamp in filename
+- Load all audio into memory first
+- Process in memory using numpy arrays
+- Use 2-4 second crossfades between tracks
+- Normalize final output
+- Save only the final mix file
 
 Return the full path to the generated mix file when complete.
 """
 
 
 def create_dj_agent() -> Agent:
-    """Create and configure the DJ agent with AWS Bedrock."""
-    model = BedrockModel(
-        model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
-        region="us-east-1"
+    """Create and configure the DJ agent with OpenRouter."""
+    api_key = os.environ.get('OPENROUTER_API_KEY')
+    if not api_key:
+        raise ValueError(
+            "OPENROUTER_API_KEY environment variable not set. "
+            "Get your API key from https://openrouter.ai/keys"
+        )
+    
+    model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-sonnet-4.5')
+    
+    model = OpenAIModel(
+        client_args={
+            "api_key": api_key,
+            "base_url": "https://openrouter.ai/api/v1"
+        },
+        model_id=model_id,
+        max_tokens=8192
     )
     
     agent = Agent(
@@ -196,34 +250,54 @@ Create a DJ mix with the following {len(tracks)} track(s):
 
 User instructions: {instructions}
 
+CRITICAL REQUIREMENTS:
+1. Write a SINGLE Python script that works entirely in memory
+2. DO NOT create any intermediate files (no temp_mix_step_01.mp3, etc.)
+3. Load all tracks into memory first using pedalboard.io.AudioFile
+4. Process and mix in memory using numpy arrays
+5. Save ONLY the final output to: {output_path}
+
 Your task:
-1. Analyze the user's instructions to understand their mixing intent
-2. Generate a structured mixing plan that addresses:
-   - Tempo adjustments (if BPM is specified)
-   - EQ adjustments (bass, mid, treble)
-   - Transitions between tracks (crossfades for gapless playback)
-   - Any other effects mentioned
-3. Write Python code using Pedalboard to execute the mix
-4. Save the final mix to: {output_path}
+1. Load all audio files into memory as numpy arrays
+2. Apply effects/processing to each track in memory
+3. Concatenate tracks with crossfade transitions (2-4 seconds)
+4. Normalize the final mix to prevent clipping
+5. Save the final mix to the specified path
 
 Technical requirements:
-- Import necessary libraries: pedalboard, soundfile (or librosa), numpy
-- Load each audio file and verify it loads correctly
-- Apply tempo changes using time stretching (preserve pitch)
-- Apply EQ adjustments as needed
-- Create smooth crossfade transitions between tracks (2-4 seconds)
-- Normalize the final output to prevent clipping
-- Save as WAV file at the specified path
+- Use pedalboard.io.AudioFile to load audio files
+- Use numpy for array operations and concatenation
+- Use soundfile (sf.write) to save the final output
+- Apply crossfades by blending overlapping audio samples
+- Normalize using: audio = audio / np.max(np.abs(audio)) * 0.95
 - Handle errors gracefully with clear messages
 
-Begin by writing the Python code to create the mix. Execute it and verify the output file is created.
+Example crossfade logic:
+```python
+crossfade_samples = int(3.0 * sample_rate)
+fade_out = np.linspace(1, 0, crossfade_samples)
+fade_in = np.linspace(0, 1, crossfade_samples)
+# Apply fades to overlapping regions
+```
+
+Begin by writing and executing the Python code to create the mix.
 """
     
     print("STATUS: Generating mixing plan...", file=sys.stderr, flush=True)
     logger.info("Invoking agent to generate mixing plan")
     
     try:
-        result = agent(prompt)
+        import io
+        import contextlib
+        
+        stdout_capture = io.StringIO()
+        with contextlib.redirect_stdout(stdout_capture):
+            agent(prompt)
+        
+        captured_output = stdout_capture.getvalue()
+        if captured_output:
+            logger.info(f"Agent stdout: {captured_output[:500]}")
+        
         logger.info("Agent execution completed")
         
         print("STATUS: Rendering final mix...", file=sys.stderr, flush=True)
@@ -244,6 +318,14 @@ Begin by writing the Python code to create the mix. Execute it and verify the ou
             
     except Exception as e:
         logger.exception(f"Agent execution failed: {e}")
+        error_msg = str(e)
+        
+        if "402" in error_msg or "credits" in error_msg.lower():
+            raise Exception(
+                "Insufficient OpenRouter credits. "
+                "Add credits at https://openrouter.ai/settings/keys or use a cheaper model"
+            )
+        
         print(f"ERROR: Agent execution failed: {e}", file=sys.stderr, flush=True)
         raise Exception(f"Failed to create mix: {str(e)}")
 
@@ -277,7 +359,7 @@ def main():
         }
         
         logger.info(f"Mix completed successfully: {mix_file_path}")
-        print(json.dumps(response))
+        print(json.dumps(response), flush=True)
         
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
@@ -285,7 +367,7 @@ def main():
             'status': 'error',
             'error': f"File not found: {str(e)}"
         }
-        print(json.dumps(response))
+        print(json.dumps(response), flush=True)
         sys.exit(1)
         
     except ValueError as e:
@@ -294,7 +376,7 @@ def main():
             'status': 'error',
             'error': f"Invalid input: {str(e)}"
         }
-        print(json.dumps(response))
+        print(json.dumps(response), flush=True)
         sys.exit(1)
         
     except Exception as e:
@@ -303,7 +385,7 @@ def main():
             'status': 'error',
             'error': str(e)
         }
-        print(json.dumps(response))
+        print(json.dumps(response), flush=True)
         sys.exit(1)
 
 

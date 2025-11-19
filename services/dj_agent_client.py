@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Callable
@@ -101,10 +102,13 @@ class DJAgentClient:
         
         try:
             try:
+                env = os.environ.copy()
+                
                 agent_process = await asyncio.create_subprocess_exec(
                     'uv', 'run', str(self.agent_script_path), request_file_path,
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
+                    env=env
                 )
             except FileNotFoundError:
                 logger.error("uv command not found")
@@ -229,58 +233,56 @@ class DJAgentClient:
         async def read_stdout():
             """Read stdout output."""
             if agent_process.stdout:
-                async for line in agent_process.stdout:
-                    stdout_data.append(line)
+                data = await agent_process.stdout.read()
+                if data:
+                    stdout_data.append(data)
         
         stderr_task = asyncio.create_task(read_stderr())
         stdout_task = asyncio.create_task(read_stdout())
         
         try:
             await asyncio.wait_for(
-                asyncio.gather(stderr_task, stdout_task),
+                agent_process.wait(),
                 timeout=self.AGENT_TIMEOUT
             )
             
-            await agent_process.wait()
+            await asyncio.gather(stderr_task, stdout_task)
             
             if agent_process.returncode != 0:
                 error_details = '\n'.join(stderr_lines[-5:]) if stderr_lines else 'Unknown error'
                 logger.error(f"Agent failed with exit code {agent_process.returncode}")
                 
-                if any('UnrecognizedClientException' in line for line in stderr_lines):
+                if any('OPENROUTER_API_KEY' in line for line in stderr_lines):
                     raise AgentError(
-                        "❌ Amazon Bedrock API key not configured.\n\n"
-                        "Set your Bedrock API key as an environment variable:\n"
-                        "  export AWS_BEARER_TOKEN_BEDROCK=your-api-key\n\n"
-                        "To generate an API key:\n"
-                        "1. Go to Amazon Bedrock console\n"
-                        "2. Navigate to 'API keys'\n"
+                        "❌ OpenRouter API key not configured.\n\n"
+                        "Set your OpenRouter API key as an environment variable:\n"
+                        "  export OPENROUTER_API_KEY=your-api-key\n\n"
+                        "To get an API key:\n"
+                        "1. Go to https://openrouter.ai/keys\n"
+                        "2. Sign in or create an account\n"
                         "3. Generate a new API key\n"
-                        "4. Copy and set it as AWS_BEARER_TOKEN_BEDROCK"
+                        "4. Copy and set it as OPENROUTER_API_KEY"
                     )
-                elif any('security token' in line.lower() or 'bearer token' in line.lower() for line in stderr_lines):
+                elif any('401' in line or 'unauthorized' in line.lower() for line in stderr_lines):
                     raise AgentError(
-                        "❌ Bedrock API key error.\n\n"
-                        "Your API key may be expired or invalid.\n"
-                        "Generate a new key in the Bedrock console and set:\n"
-                        "  export AWS_BEARER_TOKEN_BEDROCK=your-new-api-key"
+                        "❌ OpenRouter API key error.\n\n"
+                        "Your API key may be invalid or expired.\n"
+                        "Generate a new key at https://openrouter.ai/keys and set:\n"
+                        "  export OPENROUTER_API_KEY=your-new-api-key"
                     )
-                elif any('credentials' in line.lower() or 'Unable to locate credentials' in line for line in stderr_lines):
+                elif any('insufficient credits' in line.lower() or 'quota' in line.lower() for line in stderr_lines):
                     raise AgentError(
-                        "❌ Bedrock API key not found.\n\n"
-                        "Set your Bedrock API key:\n"
-                        "  export AWS_BEARER_TOKEN_BEDROCK=your-api-key\n\n"
-                        "Generate an API key at:\n"
-                        "https://console.aws.amazon.com/bedrock/home#/api-keys"
+                        "❌ OpenRouter credits exhausted.\n\n"
+                        "Add credits to your OpenRouter account:\n"
+                        "https://openrouter.ai/credits"
                     )
-                elif any("don't have access to the model" in line.lower() for line in stderr_lines):
+                elif any('model not found' in line.lower() or 'invalid model' in line.lower() for line in stderr_lines):
                     raise AgentError(
-                        "❌ Bedrock model access denied.\n\n"
-                        "Request access to the model in AWS Console:\n"
-                        "1. Go to Amazon Bedrock console\n"
-                        "2. Navigate to 'Model access'\n"
-                        "3. Request access to Claude models\n"
-                        "4. Wait for approval (usually instant)"
+                        "❌ Model not available.\n\n"
+                        "The selected model may not be available on OpenRouter.\n"
+                        "Check available models at: https://openrouter.ai/models\n\n"
+                        "Set a different model:\n"
+                        "  export OPENROUTER_MODEL=anthropic/claude-3.5-sonnet"
                     )
                 else:
                     raise AgentError(

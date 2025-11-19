@@ -4,10 +4,9 @@ from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
 from textual import events
 from textual.app import ComposeResult
-from textual.widgets import Label, Input, Button, ListView
+from textual.widgets import Label, Input, Button
 from textual.screen import ModalScreen
-from models.mix_request import MixRequest
-from models.track import Track
+from models.track import Track, format_time
 from pathlib import Path
 import logging
 import shutil
@@ -30,8 +29,6 @@ class FloppyMixView(Container):
         self.audio_player = audio_player
         self.music_library = music_library
         self._mix_file_path: str | None = None
-        self._was_playing_before_view: bool = False
-        self._previous_track = None
         
         self._track_panel: TrackSelectionPanel | None = None
         self._instructions_panel: InstructionsPanel | None = None
@@ -64,9 +61,6 @@ class FloppyMixView(Container):
         """Called when view becomes visible."""
         logger.debug("Showing Floppy Mix view")
         
-        self._was_playing_before_view = self.audio_player.is_playing()
-        self._previous_track = self.audio_player.get_current_track()
-        
         if self._track_panel:
             tracks = self.music_library.get_tracks()
             logger.debug(f"Loading {len(tracks)} tracks into Floppy Mix view")
@@ -79,12 +73,9 @@ class FloppyMixView(Container):
     
     def _set_initial_focus(self) -> None:
         """Set focus to track panel after view is fully rendered."""
-        try:
-            track_list = self.query_one("#track-list", ListView)
-            track_list.focus()
-            logger.debug("Set initial focus to track list")
-        except Exception as e:
-            logger.error(f"Error setting initial focus: {e}")
+        if self._track_panel:
+            self._track_panel.focus()
+            logger.debug("Set initial focus to track panel")
         
     def cleanup(self) -> None:
         """Cleanup resources when view is hidden."""
@@ -218,49 +209,11 @@ class FloppyMixView(Container):
             return "❌ Please select at least one track to mix"
         
         if self._instructions_panel.is_empty():
-            return "❌ Please edit the mixing instructions (replace the placeholder text)"
+            return "❌ Please enter mixing instructions"
         
         instructions = self._instructions_panel.get_instructions()
         logger.debug(f"Validation passed: {len(selected_tracks)} tracks, {len(instructions)} chars")
         return None
-    
-    def _create_mix_request(self) -> MixRequest | None:
-        """Create a MixRequest from current view state.
-        
-        Returns:
-            MixRequest object or None if validation fails.
-        """
-        if not self._track_panel or not self._instructions_panel:
-            return None
-        
-        selected_tracks = self._track_panel.get_selected_tracks()
-        instructions = self._instructions_panel.get_instructions()
-        
-        tracks_data = [
-            {
-                'path': track.file_path,
-                'title': track.title,
-                'artist': track.artist,
-                'duration': track.duration_seconds
-            }
-            for track in selected_tracks
-        ]
-        
-        import tempfile
-        output_dir = tempfile.gettempdir()
-        
-        mix_request = MixRequest(
-            tracks=tracks_data,
-            instructions=instructions,
-            output_dir=output_dir
-        )
-        
-        is_valid, error = mix_request.validate()
-        if not is_valid:
-            logger.error(f"Mix request validation failed: {error}")
-            return None
-        
-        return mix_request
         
     def on_mix_complete(self, mix_file_path: str) -> None:
         """Handle successful mix completion."""
@@ -292,7 +245,7 @@ class FloppyMixView(Container):
                 title="Floppy Mix Preview",
                 artist="AI DJ",
                 album="Generated Mix",
-                duration=Track._format_duration(0),
+                duration=format_time(0),
                 file_path=str(mix_path),
                 duration_seconds=0
             )
@@ -475,6 +428,10 @@ class FloppyMixView(Container):
 class FilenamePromptScreen(ModalScreen[str | None]):
     """Modal screen to prompt user for filename."""
     
+    BINDINGS = [
+        ("escape", "dismiss(None)", "Cancel"),
+    ]
+    
     def compose(self) -> ComposeResult:
         """Compose the filename prompt."""
         with Container(id="filename-prompt-container"):
@@ -490,6 +447,10 @@ class FilenamePromptScreen(ModalScreen[str | None]):
     
     def on_mount(self) -> None:
         """Focus input on mount."""
+        self.call_after_refresh(self._focus_input)
+    
+    def _focus_input(self) -> None:
+        """Focus the input after screen is fully rendered."""
         input_widget = self.query_one("#filename-input", Input)
         input_widget.focus()
     
@@ -506,3 +467,8 @@ class FilenamePromptScreen(ModalScreen[str | None]):
         """Handle Enter key in input."""
         filename = event.value.strip()
         self.dismiss(filename if filename else None)
+    
+    def on_key(self, event: events.Key) -> None:
+        """Prevent key events from propagating to parent app."""
+        if event.key not in ("escape",):
+            event.stop()

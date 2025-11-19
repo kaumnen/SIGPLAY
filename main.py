@@ -1,9 +1,11 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, ContentSwitcher
-from textual.containers import Horizontal, Vertical
+from textual.widgets import Footer, ContentSwitcher, Label, Input, Button
+from textual.containers import Horizontal, Vertical, Container
 from textual.binding import Binding
+from textual.screen import ModalScreen
 import asyncio
 import logging
+import os
 from pathlib import Path
 
 from widgets import Header
@@ -11,7 +13,6 @@ from views import LibraryView, NowPlayingView, MetersView, FloppyMixView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 
-PROGRESS_UPDATE_INTERVAL = 0.5
 TRACK_END_CHECK_INTERVAL = 0.5
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
@@ -61,6 +62,7 @@ class SigplayApp(App):
             raise
         
         self.music_library = MusicLibrary()
+        self._session_openrouter_key: str | None = None
         logger.info("Services initialized successfully")
     
     def compose(self) -> ComposeResult:
@@ -83,6 +85,10 @@ class SigplayApp(App):
         """Initialize the application."""
         library_view = self.query_one("#library", LibraryView)
         library_view.focus()
+        
+        header = self.query_one(Header)
+        header.volume_level = int(self.audio_player.get_volume() * 100)
+        header.is_muted = self.audio_player.is_muted()
         
         self.run_worker(self._scan_library, exclusive=True)
         self.set_interval(TRACK_END_CHECK_INTERVAL, self._check_track_end)
@@ -266,6 +272,49 @@ class SigplayApp(App):
     def action_show_floppy_mix(self) -> None:
         """Show the Floppy Mix view."""
         try:
+            if not self._check_openrouter_credentials():
+                self.push_screen(
+                    OpenRouterKeyPromptScreen(),
+                    callback=self._handle_openrouter_key_input
+                )
+            else:
+                self._show_floppy_mix_view()
+        except Exception as e:
+            logger.error(f"Error showing Floppy Mix view: {e}")
+            self.notify("❌ Cannot open Floppy Mix view", severity="error")
+    
+    def _check_openrouter_credentials(self) -> bool:
+        """Check if OpenRouter credentials are available.
+        
+        Returns:
+            True if credentials are set (either in env or session), False otherwise.
+        """
+        if self._session_openrouter_key:
+            return True
+        
+        return bool(os.environ.get('OPENROUTER_API_KEY'))
+    
+    def _handle_openrouter_key_input(self, api_key: str | None) -> None:
+        """Handle API key input from prompt screen.
+        
+        Args:
+            api_key: The API key entered by user, or None if cancelled.
+        """
+        if not api_key:
+            logger.debug("OpenRouter API key prompt cancelled by user")
+            self.notify("Floppy Mix requires OpenRouter API key", severity="information")
+            return
+        
+        self._session_openrouter_key = api_key
+        os.environ['OPENROUTER_API_KEY'] = api_key
+        logger.info("Session OpenRouter API key set successfully")
+        
+        self.notify("✓ API key set for this session", severity="information", timeout=2)
+        self._show_floppy_mix_view()
+    
+    def _show_floppy_mix_view(self) -> None:
+        """Show the Floppy Mix view after credentials are validated."""
+        try:
             switcher = self.query_one("#view-switcher", ContentSwitcher)
             switcher.current = "floppy-mix-view"
             
@@ -290,6 +339,63 @@ class SigplayApp(App):
                 library_view.focus()
         except Exception as e:
             logger.error(f"Error returning to main view: {e}")
+
+
+class OpenRouterKeyPromptScreen(ModalScreen[str | None]):
+    """Modal screen to prompt user for OpenRouter API key."""
+    
+    def compose(self) -> ComposeResult:
+        """Compose the API key prompt."""
+        with Container(id="openrouter-key-prompt-container"):
+            yield Label("🔑 OpenRouter API Key Required", id="openrouter-key-prompt-title")
+            yield Label(
+                "Floppy Mix uses OpenRouter for AI DJ mixing.\n"
+                "Enter your API key for this session:",
+                id="openrouter-key-prompt-label"
+            )
+            yield Input(
+                value="",
+                placeholder="Paste your API key here",
+                id="openrouter-key-input",
+                disabled=False
+            )
+            yield Label(
+                "💡 To generate an API key:\n"
+                "1. Go to https://openrouter.ai/keys\n"
+                "2. Sign in or create an account\n"
+                "3. Generate a new API key",
+                id="openrouter-key-help-text"
+            )
+            with Horizontal(id="openrouter-key-prompt-buttons"):
+                yield Button("Continue", id="openrouter-key-confirm-button", variant="success")
+                yield Button("Cancel", id="openrouter-key-cancel-button", variant="default")
+    
+    def on_mount(self) -> None:
+        """Focus input on mount."""
+        self.call_after_refresh(self._focus_input)
+    
+    def _focus_input(self) -> None:
+        """Set focus to input after screen is fully rendered."""
+        try:
+            input_widget = self.query_one("#openrouter-key-input", Input)
+            input_widget.focus()
+            logger.debug("OpenRouter key input focused")
+        except Exception as e:
+            logger.error(f"Failed to focus input: {e}")
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "openrouter-key-confirm-button":
+            input_widget = self.query_one("#openrouter-key-input", Input)
+            api_key = input_widget.value.strip()
+            self.dismiss(api_key if api_key else None)
+        elif event.button.id == "openrouter-key-cancel-button":
+            self.dismiss(None)
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in input."""
+        api_key = event.value.strip()
+        self.dismiss(api_key if api_key else None)
 
 
 def main():

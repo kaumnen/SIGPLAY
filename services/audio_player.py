@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import miniaudio
 import time
 import threading
 import numpy as np
-from typing import Optional, List
 from pathlib import Path
 import logging
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 44100
 NUM_CHANNELS = 2
 AUDIO_FORMAT = miniaudio.SampleFormat.SIGNED16
-DEFAULT_VOLUME = 0.3
+DEFAULT_VOLUME = 0.1
 VOLUME_STEP = 0.05
 RESTART_TRACK_THRESHOLD = 3.0
 
@@ -43,7 +44,7 @@ class AudioPlayer:
             self._pause_event = threading.Event()
             
             self._audio_buffer_lock = threading.Lock()
-            self._latest_audio_buffer: Optional[np.ndarray] = None
+            self._latest_audio_buffer: np.ndarray | None = None
             
             logger.info("Audio player initialized successfully")
             
@@ -289,7 +290,7 @@ class AudioPlayer:
         """Return current playback state."""
         return self._state
     
-    def get_current_track(self) -> Optional[Track]:
+    def get_current_track(self) -> Track | None:
         """Return currently playing track or None."""
         return self._current_track
     
@@ -311,12 +312,12 @@ class AudioPlayer:
         """Check if currently playing."""
         return self._state == PlaybackState.PLAYING
     
-    def set_playlist(self, tracks: List[Track], start_index: int = 0) -> None:
+    def set_playlist(self, tracks: list[Track], start_index: int = 0) -> None:
         """Set current playlist and starting track index."""
         self._playlist = tracks
         self._current_index = max(0, min(start_index, len(tracks) - 1)) if tracks else -1
     
-    def get_latest_audio_buffer(self) -> Optional[np.ndarray]:
+    def get_latest_audio_buffer(self) -> np.ndarray | None:
         """Get the most recent audio buffer.
         
         Returns:
