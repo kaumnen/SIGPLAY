@@ -20,7 +20,7 @@ The feature is implemented as a modal dialog overlay that doesn't interrupt curr
 ```
 SIGPLAY Application:
 SigplayApp (main.py)
-└── AIDJDialog (widgets/ai_dj_dialog.py) [NEW]
+└── FloppyMixDialog (widgets/floppy_mix_dialog.py) [NEW]
     ├── TrackSelectionPanel (widgets/track_selection_panel.py) [NEW]
     ├── InstructionsPanel (widgets/instructions_panel.py) [NEW]
     └── MixProgressPanel (widgets/mix_progress_panel.py) [NEW]
@@ -54,17 +54,17 @@ Strands Agents DJ Agent (separate process):
 ```mermaid
 sequenceDiagram
     participant User
-    participant AIDJDialog
+    participant FloppyMixDialog
     participant DJAgentClient
     participant DJAgent
     participant Pedalboard
     participant AudioPlayer
 
-    User->>AIDJDialog: Press 'd' key
-    AIDJDialog->>AIDJDialog: Display modal with tracks
-    User->>AIDJDialog: Select tracks + enter instructions
-    User->>AIDJDialog: Press Enter to start
-    AIDJDialog->>DJAgentClient: invoke_agent(tracks, instructions)
+    User->>FloppyMixDialog: Press 'd' key
+    FloppyMixDialog->>FloppyMixDialog: Display modal with tracks
+    User->>FloppyMixDialog: Select tracks + enter instructions
+    User->>FloppyMixDialog: Press Enter to start
+    FloppyMixDialog->>DJAgentClient: invoke_agent(tracks, instructions)
     DJAgentClient->>DJAgent: Start agent with mixing request
     DJAgent->>DJAgent: LLM interprets instructions
     DJAgent->>DJAgent: Generate mixing plan
@@ -72,14 +72,14 @@ sequenceDiagram
     DJAgent->>Pedalboard: Execute audio processing code
     Pedalboard-->>DJAgent: Audio processing complete
     DJAgent-->>DJAgentClient: Return mix file path
-    DJAgentClient-->>AIDJDialog: Mix ready notification
-    AIDJDialog->>AudioPlayer: Load and play mix
-    User->>AIDJDialog: Save or discard
+    DJAgentClient-->>FloppyMixDialog: Mix ready notification
+    FloppyMixDialog->>AudioPlayer: Load and play mix
+    User->>FloppyMixDialog: Save or discard
 ```
 
 ## Components and Interfaces
 
-### 1. AIDJDialog Widget
+### 1. FloppyMixDialog Widget
 
 **Purpose**: Modal dialog container that orchestrates the mixing workflow.
 
@@ -92,8 +92,8 @@ sequenceDiagram
 
 **Interface**:
 ```python
-class AIDJDialog(Container):
-    """Modal dialog for AI DJ mixing interface."""
+class FloppyMixDialog(Container):
+    """Modal dialog for Floppy Mix interface."""
     
     # Reactive state
     is_visible: reactive[bool] = reactive(False)

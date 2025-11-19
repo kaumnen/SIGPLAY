@@ -13,15 +13,15 @@
   - Add validation methods
   - _Requirements: 5.1_
 
-- [ ] 3. Build Floppy Mix dialog UI components
-- [ ] 3.1 Create AIDJDialog widget
-  - Implement modal dialog container in widgets/ai_dj_dialog.py
+- [x] 3. Build Floppy Mix dialog UI components
+- [x] 3.1 Create FloppyMixDialog widget
+  - Implement modal dialog container in widgets/floppy_mix_dialog.py
   - Add reactive state management (is_visible, mixing_state)
   - Implement show/hide methods
   - Handle keyboard events (Escape, Enter, 'd' key)
   - _Requirements: 1.1, 1.3, 4.1_
 
-- [ ] 3.2 Create TrackSelectionPanel widget
+- [x] 3.2 Create TrackSelectionPanel widget
   - Implement track list display with ListView
   - Add vim-style navigation (j/k keys)
   - Implement Space key toggle for selection
@@ -29,22 +29,22 @@
   - Maintain selected_tracks reactive state
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 3.3 Create InstructionsPanel widget
+- [x] 3.3 Create InstructionsPanel widget
   - Implement multi-line TextArea for instructions
   - Add placeholder text with examples
   - Implement text validation
   - Add clear() method
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 3.4 Create MixProgressPanel widget
+- [x] 3.4 Create MixProgressPanel widget
   - Implement status message display
   - Add LoadingIndicator for progress
   - Create save/discard buttons
   - Implement show/hide controls methods
   - _Requirements: 4.2, 7.3, 8.1, 9.1, 10.1, 10.2, 10.3_
 
-- [ ] 3.5 Wire up dialog components
-  - Compose all panels in AIDJDialog
+- [x] 3.5 Wire up dialog components
+  - Compose all panels in FloppyMixDialog
   - Connect panel interactions to dialog state
   - Implement validation before starting mix
   - Add error notification display
@@ -155,8 +155,8 @@
   - **Validates: Requirements 9.2, 9.3**
 
 - [ ] 8. Add dialog to main application
-- [ ] 8.1 Integrate AIDJDialog into SigplayApp
-  - Add AIDJDialog to main app composition
+- [ ] 8.1 Integrate FloppyMixDialog into SigplayApp
+  - Add FloppyMixDialog to main app composition
   - Bind 'd' key to show dialog
   - Pass AudioPlayer and MusicLibrary services
   - Ensure dialog doesn't interrupt playback

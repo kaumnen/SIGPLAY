@@ -169,3 +169,190 @@ MetersView {
     background: #0a0a0a;
     padding: 0 2;
 }
+
+FloppyMixDialog {
+    display: none;
+    layer: overlay;
+    align: center middle;
+    width: 90%;
+    height: 85%;
+    background: #1a1a1a;
+    border: thick #ff8c00;
+    padding: 2;
+}
+
+FloppyMixDialog.visible {
+    display: block;
+}
+
+#dialog-container {
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+}
+
+#dialog-title {
+    color: #ff8c00;
+    text-style: bold;
+    text-align: center;
+    background: #2d2d2d;
+    padding: 1;
+    border: solid #cc5500;
+    margin-bottom: 1;
+}
+
+#dialog-main-content {
+    width: 100%;
+    height: 1fr;
+    margin-bottom: 1;
+}
+
+TrackSelectionPanel {
+    width: 1fr;
+    height: 100%;
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+}
+
+#track-selection-container {
+    width: 100%;
+    height: 100%;
+}
+
+#track-selection-label {
+    color: #ff8c00;
+    text-style: bold;
+    padding: 0 0 1 0;
+    background: #1a1a1a;
+}
+
+#track-list {
+    width: 100%;
+    height: 1fr;
+    background: #1a1a1a;
+    border: none;
+}
+
+#no-tracks-message {
+    color: #ffb347;
+    text-align: center;
+    padding: 2;
+}
+
+ListItem.selected {
+    background: #2d2d2d;
+    color: #ffb347;
+}
+
+ListItem.selected:hover {
+    background: #3d3d3d;
+    color: #ffb347;
+}
+
+InstructionsPanel {
+    width: 1fr;
+    height: 100%;
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+    margin-left: 1;
+}
+
+#instructions-container {
+    width: 100%;
+    height: 100%;
+}
+
+#instructions-label {
+    color: #ff8c00;
+    text-style: bold;
+    padding: 0 0 1 0;
+    background: #1a1a1a;
+}
+
+#instructions-input {
+    width: 100%;
+    height: 1fr;
+    background: #0a0a0a;
+    border: solid #cc5500;
+    padding: 1;
+}
+
+TextArea {
+    background: #0a0a0a;
+    color: #fff8dc;
+}
+
+TextArea:focus {
+    border: solid #ff8c00;
+}
+
+MixProgressPanel {
+    width: 100%;
+    height: auto;
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+    margin-top: 1;
+}
+
+#progress-container {
+    width: 100%;
+    height: auto;
+}
+
+#status-row {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    padding: 1;
+}
+
+#progress-spinner {
+    width: auto;
+    margin-right: 2;
+}
+
+#status-display {
+    color: #ffb347;
+    text-align: left;
+}
+
+#controls-row {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    padding: 1;
+}
+
+#save-button {
+    margin-right: 2;
+}
+
+#discard-button {
+    margin-left: 2;
+}
+
+Button {
+    background: #2d2d2d;
+    color: #fff8dc;
+    border: solid #ff8c00;
+}
+
+Button:hover {
+    background: #3d3d3d;
+    color: #ffb347;
+}
+
+Button:focus {
+    border: solid #ffb347;
+}
+
+Button.success {
+    border: solid #00cc00;
+}
+
+Button.error {
+    border: solid #cc0000;
+}
