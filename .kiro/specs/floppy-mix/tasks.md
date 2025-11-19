@@ -154,8 +154,8 @@
   - **Property 19: Discard operation cleanup**
   - **Validates: Requirements 9.2, 9.3**
 
-- [ ] 8. Add dialog to main application
-- [ ] 8.1 Integrate FloppyMixDialog into SigplayApp
+- [x] 8. Add dialog to main application
+- [x] 8.1 Integrate FloppyMixDialog into SigplayApp
   - Add FloppyMixDialog to main app composition
   - Bind 'd' key to show dialog
   - Pass AudioPlayer and MusicLibrary services

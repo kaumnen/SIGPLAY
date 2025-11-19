@@ -6,7 +6,7 @@ import asyncio
 import logging
 from pathlib import Path
 
-from widgets.header import Header
+from widgets import Header, FloppyMixDialog
 from views.library import LibraryView
 from views.now_playing import NowPlayingView
 from views.meters import MetersView
@@ -47,6 +47,7 @@ class SigplayApp(App):
         Binding("-", "volume_down", "Vol-"),
         Binding("m", "toggle_mute", "Mute"),
         Binding("o", "select_device", "Device"),
+        Binding("d", "show_floppy_mix", "Floppy Mix"),
     ]
     
     def __init__(self, *args, **kwargs):
@@ -73,6 +74,8 @@ class SigplayApp(App):
                 yield NowPlayingView(self.audio_player, id="now_playing")
             
             yield MetersView(self.audio_player, id="meters")
+        
+        yield FloppyMixDialog(self.audio_player, self.music_library, id="floppy-mix-dialog")
         
         yield Footer()
     
@@ -259,6 +262,15 @@ class SigplayApp(App):
     def action_select_device(self) -> None:
         """Select audio output device (stub for future feature)."""
         self.notify("Audio device selection coming soon!", severity="information")
+    
+    def action_show_floppy_mix(self) -> None:
+        """Show the Floppy Mix dialog."""
+        try:
+            dialog = self.query_one("#floppy-mix-dialog", FloppyMixDialog)
+            dialog.show()
+        except Exception as e:
+            logger.error(f"Error showing Floppy Mix dialog: {e}")
+            self.notify("❌ Cannot open Floppy Mix dialog", severity="error")
 
 
 def main():
