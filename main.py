@@ -47,7 +47,7 @@ class SigplayApp(App):
         Binding("-", "volume_down", "Vol-"),
         Binding("m", "toggle_mute", "Mute"),
         Binding("o", "select_device", "Device"),
-        Binding("d", "show_floppy_mix", "Floppy Mix"),
+        Binding("f", "show_floppy_mix", "Floppy Mix"),
     ]
     
     def __init__(self, *args, **kwargs):
