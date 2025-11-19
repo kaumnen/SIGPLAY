@@ -159,3 +159,13 @@ crossfades, and mixing techniques automatically.
             self.dismiss()
             event.prevent_default()
             event.stop()
+        elif event.key == "j":
+            scroll = self.query_one("#help-scroll", VerticalScroll)
+            scroll.scroll_down()
+            event.prevent_default()
+            event.stop()
+        elif event.key == "k":
+            scroll = self.query_one("#help-scroll", VerticalScroll)
+            scroll.scroll_up()
+            event.prevent_default()
+            event.stop()
