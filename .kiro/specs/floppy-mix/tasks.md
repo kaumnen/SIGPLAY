@@ -50,8 +50,8 @@
   - Add error notification display
   - _Requirements: 4.4, 4.5_
 
-- [ ] 4. Implement Strands Agents DJ agent
-- [ ] 4.1 Create DJ agent script
+- [x] 4. Implement Strands Agents DJ agent
+- [x] 4.1 Create DJ agent script
   - Create floppy_mix_agent.py with Strands Agent configuration
   - Configure AWS Bedrock model (Claude)
   - Write system prompt for DJ/audio engineer persona
@@ -59,7 +59,7 @@
   - Add file system access capabilities
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 4.2 Implement agent mixing logic
+- [x] 4.2 Implement agent mixing logic
   - Write agent code to interpret natural language instructions
   - Generate structured mixing plans
   - Implement Pedalboard code generation
