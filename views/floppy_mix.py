@@ -129,13 +129,8 @@ class FloppyMixView(Container):
                 logger.warning(f"Failed to delete temporary mix file: {e}")
         
     def on_key(self, event: events.Key) -> None:
-        """Handle keyboard events (Space, Escape)."""
-        if event.key == "space" and self.mixing_state == "previewing":
-            logger.debug("Space key pressed during preview, toggling playback")
-            self._toggle_preview_playback()
-            event.prevent_default()
-            event.stop()
-        elif event.key == "escape":
+        """Handle keyboard events (Escape only - Space handled by global binding)."""
+        if event.key == "escape":
             logger.debug("Escape key pressed, returning to main view")
             self.app.action_back_to_main()
             event.prevent_default()

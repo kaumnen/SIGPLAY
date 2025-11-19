@@ -54,7 +54,7 @@ class SigplayApp(App):
     
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True),
-        Binding("space", "play_pause", "Play/Pause", priority=True),
+        Binding("space", "play_pause", "Play/Pause"),
         Binding("s", "stop", "Stop", priority=True),
         Binding("n", "next_track", "Next", priority=True),
         Binding("p", "previous_track", "Prev", priority=True),
@@ -196,11 +196,29 @@ class SigplayApp(App):
         self.exit()
     
     def action_play_pause(self) -> None:
-        """Toggle play/pause state."""
-        if self.audio_player.is_playing():
-            self.audio_player.pause()
-        else:
-            self.audio_player.resume()
+        """Toggle play/pause state.
+        
+        In Floppy Mix view, this only works during preview playback.
+        During track selection, space is handled by TrackSelectionPanel.
+        """
+        try:
+            switcher = self.query_one("#view-switcher", ContentSwitcher)
+            
+            if switcher.current == "floppy-mix-view":
+                floppy_mix_view = self.query_one("#floppy-mix-view", FloppyMixView)
+                if floppy_mix_view.mixing_state == "previewing":
+                    if self.audio_player.is_playing():
+                        self.audio_player.pause()
+                    else:
+                        self.audio_player.resume()
+                return
+            
+            if self.audio_player.is_playing():
+                self.audio_player.pause()
+            else:
+                self.audio_player.resume()
+        except Exception as e:
+            logger.error(f"Error toggling play/pause: {e}")
     
     def action_stop(self) -> None:
         """Stop playback."""

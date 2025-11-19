@@ -62,7 +62,7 @@ The app uses a view-switching architecture with two main views:
 
 ### Global Keybindings (work everywhere)
 - `q` - Quit application
-- `space` - Play/Pause (or toggle mix preview in Floppy Mix)
+- `space` - Play/Pause (in Floppy Mix: toggle selection when idle, play/pause preview when previewing)
 - `s` - Stop playback
 - `n` - Next track
 - `p` - Previous track
@@ -125,7 +125,7 @@ AI-powered DJ mixing using natural language instructions.
 1. Press `f` to open Floppy Mix view (prompts for API key if not configured)
 2. Select tracks using `Space` key (vim-style `j`/`k` navigation)
 3. Tab to instructions panel and enter natural language mixing instructions
-4. Click "Start Mix" button
+4. Click "Start Mix" button or press Enter
 5. AI agent analyzes instructions and generates mix using Pedalboard
 6. Mix automatically plays as preview (Space to pause/resume)
 7. Click "Save Mix" to save to Music Library with custom filename

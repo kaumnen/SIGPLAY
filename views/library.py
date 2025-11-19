@@ -13,7 +13,7 @@ class LibraryView(Container):
     BINDINGS = [
         Binding("j", "move_down", "Move down", show=False),
         Binding("k", "move_up", "Move up", show=False),
-        Binding("enter", "select_track", "Play track", show=False),
+        Binding("enter", "select_track", "Play"),
     ]
     
     def __init__(self, music_library, audio_player, *args, **kwargs):
