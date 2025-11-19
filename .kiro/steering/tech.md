@@ -392,7 +392,6 @@ When writing system prompts for agents:
   - Session-level API keys stored in app state for current session only
 - `OPENROUTER_MODEL` (optional): Model to use (default: `anthropic/claude-haiku-4.5`)
   - Available models: https://openrouter.ai/models
-  - Examples: `anthropic/claude-haiku-4.5`, `anthropic/claude-sonnet-4.5`, `minimax/minimax-m2`, `openai/gpt-4`, `meta-llama/llama-3.1-70b-instruct`
 
 ## Performance Considerations
 

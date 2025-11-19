@@ -69,9 +69,9 @@ The app uses a view-switching architecture with two main views:
 - `+`/`=` - Volume up
 - `-` - Volume down
 - `m` - Toggle mute
-- `o` - Select audio device (future feature)
 - `f` - Open Floppy Mix view
-- `Escape` - Return to main view (from Floppy Mix)
+- `d` - Return to default/main view (from Floppy Mix)
+- `h` or `?` - Show help screen
 
 ### Library View Keybindings (vim-style)
 - `j` - Move down in track list
@@ -122,20 +122,30 @@ The app uses a view-switching architecture with two main views:
 AI-powered DJ mixing using natural language instructions.
 
 ### Workflow
-1. Press `f` to open Floppy Mix view
+1. Press `f` to open Floppy Mix view (prompts for API key if not configured)
 2. Select tracks using `Space` key (vim-style `j`/`k` navigation)
 3. Tab to instructions panel and enter natural language mixing instructions
-4. Click "Start Mix" button or press Enter
+4. Click "Start Mix" button
 5. AI agent analyzes instructions and generates mix using Pedalboard
-6. Mix automatically plays as preview
-7. Save to Music Library or discard
+6. Mix automatically plays as preview (Space to pause/resume)
+7. Click "Save Mix" to save to Music Library with custom filename
+8. Click "Discard Mix" to delete and start over
+9. Press `d` to return to main view
 
 ### Natural Language Instructions
 Users can request mixing operations in plain English:
-- "Mix these tracks with smooth crossfades"
-- "Match tempo to 128 BPM and boost the bass"
-- "Create a seamless DJ mix with 4-second transitions"
-- "Add reverb and increase energy"
+- "Mix these tracks with smooth 4-second crossfades"
+- "Boost the bass and add some reverb"
+- "Create a high-energy mix with compression"
+- "Blend tracks smoothly with subtle effects"
+- "Add warmth with bass boost and gentle compression"
+
+The AI agent interprets instructions and applies appropriate:
+- Crossfades (2-6 seconds typical)
+- EQ adjustments (bass/treble boost/cut)
+- Effects (reverb, compression, chorus, delay)
+- Filters (highpass to remove rumble, lowpass for warmth)
+- Gain adjustments for volume matching
 
 ### Technical Implementation
 - **AI Agent**: Strands Agents with OpenRouter (user-selectable models)

@@ -357,7 +357,7 @@ def create_dj_agent() -> Agent:
             "Get your API key from https://openrouter.ai/keys"
         )
     
-    model_id = os.environ.get('OPENROUTER_MODEL', 'google/gemini-2.0-flash-001')
+    model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-haiku-4.5')
     
     model = OpenAIModel(
         client_args={
