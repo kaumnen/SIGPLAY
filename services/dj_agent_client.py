@@ -79,9 +79,9 @@ class DJAgentClient:
             raise ValueError("Mixing instructions must be provided")
         
         for track in tracks:
-            if not Path(track.path).exists():
+            if not Path(track.file_path).exists():
                 raise FileNotFoundError(
-                    f"Track file not found: {track.title} ({track.path}). "
+                    f"Track file not found: {track.title} ({track.file_path}). "
                     "Please check your music library."
                 )
         
@@ -171,7 +171,7 @@ class DJAgentClient:
         
         track_data = [
             {
-                'path': str(track.path),
+                'path': str(track.file_path),
                 'title': track.title,
                 'artist': track.artist or 'Unknown',
                 'duration': track.duration
@@ -206,6 +206,7 @@ class DJAgentClient:
             MixingError: If audio processing fails
         """
         stderr_lines = []
+        stdout_data = []
         
         async def read_stderr():
             """Read and process stderr output for status messages."""
@@ -225,26 +226,72 @@ class DJAgentClient:
                     else:
                         logger.debug(f"Agent stderr: {line_text}")
         
+        async def read_stdout():
+            """Read stdout output."""
+            if agent_process.stdout:
+                async for line in agent_process.stdout:
+                    stdout_data.append(line)
+        
         stderr_task = asyncio.create_task(read_stderr())
+        stdout_task = asyncio.create_task(read_stdout())
         
         try:
-            stdout, _ = await asyncio.wait_for(
-                agent_process.communicate(),
+            await asyncio.wait_for(
+                asyncio.gather(stderr_task, stdout_task),
                 timeout=self.AGENT_TIMEOUT
             )
             
-            await stderr_task
+            await agent_process.wait()
             
             if agent_process.returncode != 0:
                 error_details = '\n'.join(stderr_lines[-5:]) if stderr_lines else 'Unknown error'
                 logger.error(f"Agent failed with exit code {agent_process.returncode}")
-                raise AgentError(
-                    f"DJ agent failed with exit code {agent_process.returncode}. "
-                    f"Details: {error_details}"
-                )
+                
+                if any('UnrecognizedClientException' in line for line in stderr_lines):
+                    raise AgentError(
+                        "❌ Amazon Bedrock API key not configured.\n\n"
+                        "Set your Bedrock API key as an environment variable:\n"
+                        "  export AWS_BEARER_TOKEN_BEDROCK=your-api-key\n\n"
+                        "To generate an API key:\n"
+                        "1. Go to Amazon Bedrock console\n"
+                        "2. Navigate to 'API keys'\n"
+                        "3. Generate a new API key\n"
+                        "4. Copy and set it as AWS_BEARER_TOKEN_BEDROCK"
+                    )
+                elif any('security token' in line.lower() or 'bearer token' in line.lower() for line in stderr_lines):
+                    raise AgentError(
+                        "❌ Bedrock API key error.\n\n"
+                        "Your API key may be expired or invalid.\n"
+                        "Generate a new key in the Bedrock console and set:\n"
+                        "  export AWS_BEARER_TOKEN_BEDROCK=your-new-api-key"
+                    )
+                elif any('credentials' in line.lower() or 'Unable to locate credentials' in line for line in stderr_lines):
+                    raise AgentError(
+                        "❌ Bedrock API key not found.\n\n"
+                        "Set your Bedrock API key:\n"
+                        "  export AWS_BEARER_TOKEN_BEDROCK=your-api-key\n\n"
+                        "Generate an API key at:\n"
+                        "https://console.aws.amazon.com/bedrock/home#/api-keys"
+                    )
+                elif any("don't have access to the model" in line.lower() for line in stderr_lines):
+                    raise AgentError(
+                        "❌ Bedrock model access denied.\n\n"
+                        "Request access to the model in AWS Console:\n"
+                        "1. Go to Amazon Bedrock console\n"
+                        "2. Navigate to 'Model access'\n"
+                        "3. Request access to Claude models\n"
+                        "4. Wait for approval (usually instant)"
+                    )
+                else:
+                    raise AgentError(
+                        f"DJ agent failed with exit code {agent_process.returncode}. "
+                        f"Details: {error_details}"
+                    )
+            
+            stdout = b''.join(stdout_data).decode('utf-8')
             
             try:
-                response = json.loads(stdout.decode('utf-8'))
+                response = json.loads(stdout)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse agent response: {e}")
                 raise AgentError(f"Invalid response from DJ agent: {str(e)}")
@@ -268,4 +315,5 @@ class DJAgentClient:
             
         except asyncio.TimeoutError:
             stderr_task.cancel()
+            stdout_task.cancel()
             raise

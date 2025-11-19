@@ -100,8 +100,6 @@ class FloppyMixView(Container):
         
         if self._track_panel:
             self._track_panel.clear_selection()
-        if self._instructions_panel:
-            self._instructions_panel.clear()
         if self._progress_panel:
             self._progress_panel.hide_preview_controls()
             self._progress_panel.update_status("Ready to mix")
@@ -174,10 +172,37 @@ class FloppyMixView(Container):
         self.mixing_state = "mixing"
         
         if self._progress_panel:
-            self._progress_panel.update_status("Validating mix request...")
+            self._progress_panel.update_status("Preparing mix request...")
             self._progress_panel.show_loading()
         
-        self.app.notify("Mix started! Agent integration coming in task 4.", severity="information")
+        self.app.notify("🎵 Starting mix...", severity="information")
+        
+        try:
+            from services.dj_agent_client import DJAgentClient
+            
+            selected_tracks = self._track_panel.get_selected_tracks()
+            instructions = self._instructions_panel.get_instructions()
+            
+            logger.info(f"Creating mix with {len(selected_tracks)} tracks")
+            
+            client = DJAgentClient()
+            
+            def progress_update(status: str) -> None:
+                """Update progress panel with agent status."""
+                if self._progress_panel:
+                    self._progress_panel.update_status(status)
+            
+            mix_file_path = await client.create_mix(
+                tracks=selected_tracks,
+                instructions=instructions,
+                progress_callback=progress_update
+            )
+            
+            self.on_mix_complete(mix_file_path)
+            
+        except Exception as e:
+            logger.exception(f"Mix failed: {e}")
+            self.on_mix_error(str(e))
         
     def _validate_inputs(self) -> str | None:
         """Validate user inputs before starting mix.
@@ -192,10 +217,10 @@ class FloppyMixView(Container):
         if not selected_tracks:
             return "❌ Please select at least one track to mix"
         
-        instructions = self._instructions_panel.get_instructions()
-        if not instructions or not instructions.strip():
-            return "❌ Please provide mixing instructions"
+        if self._instructions_panel.is_empty():
+            return "❌ Please edit the mixing instructions (replace the placeholder text)"
         
+        instructions = self._instructions_panel.get_instructions()
         logger.debug(f"Validation passed: {len(selected_tracks)} tracks, {len(instructions)} chars")
         return None
     
@@ -439,8 +464,6 @@ class FloppyMixView(Container):
         
         if self._track_panel:
             self._track_panel.clear_selection()
-        if self._instructions_panel:
-            self._instructions_panel.clear()
         if self._progress_panel:
             self._progress_panel.hide_preview_controls()
             self._progress_panel.update_status("Ready to mix")

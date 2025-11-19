@@ -139,8 +139,7 @@ def create_dj_agent() -> Agent:
     agent = Agent(
         model=model,
         system_prompt=DJ_AGENT_SYSTEM_PROMPT,
-        tools=[execute_python_code, write_file, read_file],
-        max_iterations=10
+        tools=[execute_python_code, write_file, read_file]
     )
     
     return agent
