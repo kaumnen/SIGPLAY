@@ -8,7 +8,7 @@ import logging
 import os
 from pathlib import Path
 
-from widgets import Header
+from widgets import Header, HelpScreen
 from views import LibraryView, NowPlayingView, MetersView, FloppyMixView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
@@ -47,7 +47,9 @@ class SigplayApp(App):
         Binding("m", "toggle_mute", "Mute"),
         Binding("o", "select_device", "Device"),
         Binding("f", "show_floppy_mix", "Floppy Mix"),
-        Binding("escape", "back_to_main", "Back", priority=True),
+        Binding("d", "back_to_main", "Default View"),
+        Binding("h", "show_help", "Help"),
+        Binding("?", "show_help", "Help", show=False),
     ]
     
     def __init__(self, *args, **kwargs):
@@ -345,6 +347,16 @@ class SigplayApp(App):
                 library_view.focus()
         except Exception as e:
             logger.error(f"Error returning to main view: {e}")
+    
+    def action_show_help(self) -> None:
+        """Show help screen based on current view."""
+        try:
+            switcher = self.query_one("#view-switcher", ContentSwitcher)
+            view_type = "floppy_mix" if switcher.current == "floppy-mix-view" else "main"
+            self.push_screen(HelpScreen(view_type=view_type))
+        except Exception as e:
+            logger.error(f"Error showing help screen: {e}")
+            self.notify("❌ Cannot show help", severity="error")
 
 
 class OpenRouterKeyPromptScreen(ModalScreen[str | None]):
