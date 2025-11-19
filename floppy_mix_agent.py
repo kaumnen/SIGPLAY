@@ -18,7 +18,7 @@ from datetime import datetime
 
 from strands import Agent, tool
 from strands.models.openai import OpenAIModel
-from pedalboard import Pedalboard, Reverb, Compressor, Chorus, Delay, HighpassFilter, LowpassFilter, Gain
+from pedalboard import Pedalboard, Reverb, Compressor, Chorus, Delay, HighpassFilter, LowpassFilter, Gain, LowShelfFilter, HighShelfFilter
 from pedalboard.io import AudioFile
 import librosa
 
@@ -75,6 +75,104 @@ def load_audio_track(track_path: str, track_id: str) -> str:
 
 
 @tool
+def analyze_track(track_id: str) -> str:
+    """Analyze a track to detect its BPM (tempo) and other properties.
+    
+    Args:
+        track_id: ID of the loaded track
+        
+    Returns:
+        Analysis string containing BPM and duration.
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded. Load it first with load_audio_track."
+            
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        if audio.shape[0] > 1:
+            y_mono = librosa.to_mono(audio)
+        else:
+            y_mono = audio[0]
+            
+        tempo, _ = librosa.beat.beat_track(y=y_mono, sr=sample_rate)
+        
+        if isinstance(tempo, np.ndarray):
+             tempo = tempo[0]
+             
+        track_data['bpm'] = float(tempo)
+        
+        duration = audio.shape[1] / sample_rate
+        
+        logger.info(f"Analyzed {track_id}: {tempo:.1f} BPM")
+        return f"✓ Analysis for {track_id}: {tempo:.1f} BPM, {duration:.1f}s"
+        
+    except Exception as e:
+        logger.error(f"Failed to analyze {track_id}: {e}")
+        return f"✗ Error analyzing {track_id}: {str(e)}"
+
+
+@tool
+def match_tempo(track_id: str, target_bpm: float) -> str:
+    """Adjust the tempo of a track to match a target BPM.
+    
+    Args:
+        track_id: ID of the loaded track
+        target_bpm: The desired BPM to match
+        
+    Returns:
+        Success message with speed change details
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded."
+            
+        track_data = _audio_cache[track_id]
+        
+        if 'bpm' not in track_data:
+             audio = track_data['audio']
+             sample_rate = track_data['sample_rate']
+             if audio.shape[0] > 1:
+                 y_mono = librosa.to_mono(audio)
+             else:
+                 y_mono = audio[0]
+             tempo, _ = librosa.beat.beat_track(y=y_mono, sr=sample_rate)
+             if isinstance(tempo, np.ndarray):
+                 tempo = tempo[0]
+             track_data['bpm'] = float(tempo)
+        
+        current_bpm = track_data['bpm']
+        
+        if current_bpm <= 0:
+             return f"✗ Error: Detected BPM is invalid ({current_bpm})"
+             
+        speed_factor = target_bpm / current_bpm
+        
+        if speed_factor < 0.5 or speed_factor > 2.0:
+            logger.warning(f"Extreme tempo change requested: {speed_factor:.2f}x")
+        
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        original_duration = audio.shape[1] / sample_rate
+        
+        stretched_audio = librosa.effects.time_stretch(audio, rate=speed_factor)
+        
+        track_data['audio'] = stretched_audio
+        track_data['bpm'] = target_bpm
+        
+        new_duration = stretched_audio.shape[1] / sample_rate
+        
+        logger.info(f"Matched tempo of {track_id}: {current_bpm:.1f} -> {target_bpm:.1f} BPM ({speed_factor:.2f}x)")
+        return f"✓ Matched tempo of {track_id} to {target_bpm:.1f} BPM (Speed: {speed_factor:.2f}x)"
+        
+    except Exception as e:
+        logger.error(f"Failed to match tempo for {track_id}: {e}")
+        return f"✗ Error matching tempo for {track_id}: {str(e)}"
+
+
+@tool
 def apply_effects(
     track_id: str,
     reverb_room_size: float = 0.0,
@@ -83,6 +181,8 @@ def apply_effects(
     delay_seconds: float = 0.0,
     highpass_cutoff_hz: float = 0.0,
     lowpass_cutoff_hz: float = 0.0,
+    bass_boost_db: float = 0.0,
+    treble_boost_db: float = 0.0,
     gain_db: float = 0.0
 ) -> str:
     """Apply audio effects to a loaded track.
@@ -93,8 +193,10 @@ def apply_effects(
         compressor_threshold_db: Compressor threshold in dB (0=off, typical: -20 to -10)
         chorus_rate_hz: Chorus rate in Hz (0=off, typical: 1-5)
         delay_seconds: Delay time in seconds (0=off, typical: 0.1-0.5)
-        highpass_cutoff_hz: High-pass filter cutoff in Hz (0=off, typical: 80-200)
-        lowpass_cutoff_hz: Low-pass filter cutoff in Hz (0=off, typical: 8000-15000)
+        highpass_cutoff_hz: High-pass filter cutoff in Hz (0=off, typical: 80-200 to remove rumble)
+        lowpass_cutoff_hz: Low-pass filter cutoff in Hz (0=off, typical: 8000-15000 to remove harshness)
+        bass_boost_db: Bass boost in dB (0=off, typical: 3-6 for more bass, negative to reduce bass)
+        treble_boost_db: Treble boost in dB (0=off, typical: 3-6 for more treble, negative to reduce treble)
         gain_db: Gain adjustment in dB (0=no change, positive=louder, negative=quieter)
         
     Returns:
@@ -118,6 +220,16 @@ def apply_effects(
         if lowpass_cutoff_hz > 0:
             effects.append(LowpassFilter(cutoff_frequency_hz=lowpass_cutoff_hz))
             applied.append(f"lowpass {lowpass_cutoff_hz}Hz")
+            
+        if bass_boost_db != 0:
+            # LowShelf at 200Hz covers bass frequencies
+            effects.append(LowShelfFilter(cutoff_frequency_hz=200, gain_db=bass_boost_db, q=0.707))
+            applied.append(f"bass {bass_boost_db:+.1f}dB")
+            
+        if treble_boost_db != 0:
+            # HighShelf at 3000Hz covers treble frequencies
+            effects.append(HighShelfFilter(cutoff_frequency_hz=3000, gain_db=treble_boost_db, q=0.707))
+            applied.append(f"treble {treble_boost_db:+.1f}dB")
         
         if compressor_threshold_db < 0:
             effects.append(Compressor(threshold_db=compressor_threshold_db))
@@ -270,8 +382,9 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
                     crossfade_samples = min(crossfade_samples, final_audio.shape[1], audio.shape[1])
                     
                     if crossfade_samples > 0:
-                        fade_out = np.linspace(1, 0, crossfade_samples)
-                        fade_in = np.linspace(0, 1, crossfade_samples)
+                        t = np.linspace(0, 1, crossfade_samples)
+                        fade_in = np.sin(t * (np.pi / 2))
+                        fade_out = np.cos(t * (np.pi / 2))
                         
                         overlap_end = final_audio[:, -crossfade_samples:]
                         overlap_start = audio[:, :crossfade_samples]
@@ -314,9 +427,12 @@ Your role is to create professional DJ mixes using the provided audio processing
 
 WORKFLOW:
 1. Load each track using load_audio_track(track_path, track_id)
-2. Apply effects to each track using apply_effects(track_id, ...)
-3. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
-4. Render the final mix using render_final_mix(output_path)
+2. Analyze each track to get BPM using analyze_track(track_id)
+3. Decide on a target BPM (usually the average or the BPM of the first track)
+4. Match tempos of all tracks to the target BPM using match_tempo(track_id, target_bpm)
+5. Apply effects to each track using apply_effects(track_id, ...)
+6. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
+7. Render the final mix using render_final_mix(output_path)
 
 AVAILABLE TOOLS:
 
@@ -324,47 +440,60 @@ AVAILABLE TOOLS:
    - Loads an audio file into memory
    - Use track_id like 'track_1', 'track_2', etc.
 
-2. apply_effects(track_id, reverb_room_size, compressor_threshold_db, chorus_rate_hz, delay_seconds, highpass_cutoff_hz, lowpass_cutoff_hz, gain_db)
+2. analyze_track(track_id)
+   - Detects BPM (tempo) and duration
+   - CRITICAL: Always call this before mixing to understand the tracks!
+
+3. match_tempo(track_id, target_bpm)
+   - Time-stretches the track to match a specific BPM
+   - Essential for seamless mixing
+   - Example: match_tempo('track_2', 128.0)
+
+4. apply_effects(track_id, reverb_room_size, compressor_threshold_db, chorus_rate_hz, delay_seconds, highpass_cutoff_hz, lowpass_cutoff_hz, bass_boost_db, treble_boost_db, gain_db)
    - Apply audio effects to a loaded track
    - All parameters are optional (0 = off)
    - Examples:
-     * Boost bass: highpass_cutoff_hz=0, lowpass_cutoff_hz=0, gain_db=3
+     * Boost bass: bass_boost_db=4 to 6
+     * Reduce bass: bass_boost_db=-3 to -6
+     * Boost treble: treble_boost_db=3 to 5
      * Add reverb: reverb_room_size=0.5
      * Compress: compressor_threshold_db=-15
-     * Brighten: highpass_cutoff_hz=100
+     * Remove rumble: highpass_cutoff_hz=80 to 100
 
-3. change_tempo(track_id, speed_factor)
-   - Change playback speed without changing pitch
-   - speed_factor: 1.0=normal, 1.5=50% faster, 0.8=20% slower
-   - Examples:
-     * Speed up: speed_factor=1.2 (20% faster)
-     * Slow down: speed_factor=0.8 (20% slower)
+5. change_tempo(track_id, speed_factor)
+   - Manual speed change (prefer match_tempo for mixing)
 
-4. add_track_to_mix(track_id, crossfade_duration, start_time, end_time)
+6. add_track_to_mix(track_id, crossfade_duration, start_time, end_time)
    - Add a processed track to the final mix
-   - crossfade_duration: seconds to blend with previous track (typical: 2-4)
+   - crossfade_duration: seconds to blend with previous track (typical: 4-8 seconds for beat-matched mixes)
    - start_time/end_time: optional trimming (in seconds)
 
-5. render_final_mix(output_path, normalize)
+7. render_final_mix(output_path, normalize)
    - Render and save the final mix
    - normalize=True prevents clipping (recommended)
 
 MIXING BEST PRACTICES:
-- Use 2-4 second crossfades for smooth transitions
-- Apply compression (threshold -15 to -10 dB) for consistent volume
-- Use subtle reverb (room_size 0.2-0.5) for cohesion
-- Normalize the final output to prevent clipping
-- Match energy levels between tracks with gain adjustments
+- ALWAYS analyze tracks first to get their BPM.
+- Pick a master tempo (e.g., 124 BPM or the BPM of the first track).
+- Use match_tempo to sync all tracks to that master tempo.
+- Use longer crossfades (4-8s) for beat-matched tracks to create smooth transitions.
+- Apply compression (threshold -15 to -10 dB) for consistent volume.
+- Use subtle reverb (room_size 0.2-0.5) for cohesion.
+- Normalize the final output to prevent clipping.
+- Match energy levels between tracks with gain adjustments.
 
 EXAMPLE WORKFLOW:
 1. load_audio_track('/path/track1.mp3', 'track_1')
-2. apply_effects('track_1', compressor_threshold_db=-12, gain_db=2)
-3. add_track_to_mix('track_1', crossfade_duration=0)
-4. load_audio_track('/path/track2.mp3', 'track_2')
-5. change_tempo('track_2', speed_factor=1.2)  # Speed up by 20%
-6. apply_effects('track_2', reverb_room_size=0.3, compressor_threshold_db=-12)
-7. add_track_to_mix('track_2', crossfade_duration=3.0)
-8. render_final_mix('/output/mix.wav', normalize=True)
+2. load_audio_track('/path/track2.mp3', 'track_2')
+3. analyze_track('track_1') -> Returns 120 BPM
+4. analyze_track('track_2') -> Returns 125 BPM
+5. match_tempo('track_1', 122.0) # Meet in the middle
+6. match_tempo('track_2', 122.0)
+7. apply_effects('track_1', compressor_threshold_db=-12)
+8. apply_effects('track_2', compressor_threshold_db=-12)
+9. add_track_to_mix('track_1', crossfade_duration=0)
+10. add_track_to_mix('track_2', crossfade_duration=8.0)
+11. render_final_mix('/output/mix.wav', normalize=True)
 
 Interpret the user's natural language instructions and translate them into appropriate tool calls.
 """
@@ -379,7 +508,7 @@ def create_dj_agent() -> Agent:
             "Get your API key from https://openrouter.ai/keys"
         )
     
-    model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-haiku-4.5')
+    model_id = os.environ.get('OPENROUTER_MODEL', 'google/gemini-2.0-flash-001')
     
     model = OpenAIModel(
         client_args={
@@ -393,7 +522,7 @@ def create_dj_agent() -> Agent:
     agent = Agent(
         model=model,
         system_prompt=DJ_AGENT_SYSTEM_PROMPT,
-        tools=[load_audio_track, apply_effects, change_tempo, add_track_to_mix, render_final_mix]
+        tools=[load_audio_track, analyze_track, match_tempo, apply_effects, change_tempo, add_track_to_mix, render_final_mix]
     )
     
     return agent
@@ -458,21 +587,25 @@ Output file: {output_path}
 
 Use the available tools to:
 1. Load each track with load_audio_track(path, 'track_1'), load_audio_track(path, 'track_2'), etc.
-2. Apply effects based on the user's instructions using apply_effects()
-3. Add each track to the mix with add_track_to_mix() (use 2-4 second crossfades)
-4. Render the final mix with render_final_mix('{output_path}', normalize=True)
+2. Analyze tracks with analyze_track() to get BPMs.
+3. Match tempos with match_tempo() to ensure they sync up.
+4. Apply effects based on the user's instructions using apply_effects()
+5. Add each track to the mix with add_track_to_mix() (use 4-8 second crossfades for beat-matched mixes)
+6. Render the final mix with render_final_mix('{output_path}', normalize=True)
 
 Interpret the user's instructions and apply appropriate effects. If they mention:
-- "speed up" or "faster": use change_tempo with speed_factor=1.2-1.5
-- "slow down" or "slower": use change_tempo with speed_factor=0.7-0.9
-- "boost bass" or "more bass": use gain_db=3-5
+- "speed up" or "faster": use change_tempo or match_tempo to a higher BPM
+- "slow down" or "slower": use change_tempo or match_tempo to a lower BPM
+- "boost bass" or "more bass" or "increase bass": use bass_boost_db=4 to 6 (and keep highpass_cutoff_hz=0)
+- "reduce bass" or "less bass": use bass_boost_db=-3 to -6
+- "boost treble" or "more treble" or "brighter": use treble_boost_db=3 to 5
 - "smooth" or "reverb": use reverb_room_size=0.3-0.5
 - "compress" or "consistent volume": use compressor_threshold_db=-12 to -15
-- "bright" or "crisp": use highpass_cutoff_hz=100-150
-- "warm": use lowpass_cutoff_hz=10000-12000
-- "crossfade" or "blend": use crossfade_duration=3-4 seconds
+- "remove rumble" or "clean bass": use highpass_cutoff_hz=80-100
+- "warm" or "mellow": use lowpass_cutoff_hz=10000-12000
+- "crossfade" or "blend": use crossfade_duration=4-8 seconds
 
-Start by loading all tracks, then apply tempo changes if needed, then apply effects, then add them to the mix, and finally render.
+Start by loading all tracks, then analyze them, then match tempos, then apply effects, then add them to the mix, and finally render.
 """
     
     print("STATUS: Processing tracks...", file=sys.stderr, flush=True)
