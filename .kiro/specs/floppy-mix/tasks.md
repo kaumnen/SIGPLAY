@@ -6,8 +6,8 @@
   - Set up basic imports and module structure
   - _Requirements: All_
 
-- [ ] 2. Create data models
-- [ ] 2.1 Implement MixRequest model
+- [x] 2. Create data models
+- [x] 2.1 Implement MixRequest model
   - Create models/mix_request.py with MixRequest dataclass
   - Include fields for tracks, instructions, and output directory
   - Add validation methods
