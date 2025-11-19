@@ -104,15 +104,15 @@
   - Test error scenarios
   - _Requirements: 5.1, 5.4, 5.5_
 
-- [ ] 6. Integrate audio playback
-- [ ] 6.1 Implement mix preview
+- [x] 6. Integrate audio playback
+- [x] 6.1 Implement mix preview
   - Load generated mix file into AudioPlayer
   - Start playback automatically
   - Display playback controls in dialog
   - Handle Space key for play/pause
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 6.2 Implement cleanup on dialog close
+- [x] 6.2 Implement cleanup on dialog close
   - Stop playback when dialog closes
   - Delete temporary mix file if not saved
   - Reset dialog state

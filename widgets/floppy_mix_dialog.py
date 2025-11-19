@@ -6,6 +6,8 @@ from textual import events
 from textual.app import ComposeResult
 from textual.widgets import Label
 from models.mix_request import MixRequest
+from models.track import Track
+from pathlib import Path
 import logging
 
 from .track_selection_panel import TrackSelectionPanel
@@ -26,6 +28,8 @@ class FloppyMixDialog(Container):
         self.audio_player = audio_player
         self.music_library = music_library
         self._mix_file_path: str | None = None
+        self._was_playing_before_dialog: bool = False
+        self._previous_track = None
         
         self._track_panel: TrackSelectionPanel | None = None
         self._instructions_panel: InstructionsPanel | None = None
@@ -56,6 +60,10 @@ class FloppyMixDialog(Container):
     def show(self) -> None:
         """Display the dialog as modal overlay."""
         logger.debug("Showing Floppy Mix dialog")
+        
+        self._was_playing_before_dialog = self.audio_player.is_playing()
+        self._previous_track = self.audio_player.get_current_track()
+        
         self.is_visible = True
         self.display = True
         
@@ -73,6 +81,8 @@ class FloppyMixDialog(Container):
         """Cleanup resources when dialog closes."""
         if self._mix_file_path and self.mixing_state == "previewing":
             logger.debug("Cleaning up mix preview")
+            self._stop_preview_playback()
+            self._delete_temp_mix_file()
         
         self.mixing_state = "idle"
         self._mix_file_path = None
@@ -84,9 +94,29 @@ class FloppyMixDialog(Container):
         if self._progress_panel:
             self._progress_panel.hide_preview_controls()
             self._progress_panel.update_status("Ready to mix")
+    
+    def _stop_preview_playback(self) -> None:
+        """Stop playback of the mix preview."""
+        current_track = self.audio_player.get_current_track()
+        
+        if current_track and self._mix_file_path:
+            if current_track.file_path == self._mix_file_path:
+                logger.debug("Stopping mix preview playback")
+                self.audio_player.stop()
+    
+    def _delete_temp_mix_file(self) -> None:
+        """Delete the temporary mix file if it exists."""
+        if self._mix_file_path:
+            try:
+                mix_path = Path(self._mix_file_path)
+                if mix_path.exists():
+                    mix_path.unlink()
+                    logger.debug(f"Deleted temporary mix file: {self._mix_file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to delete temporary mix file: {e}")
         
     def on_key(self, event: events.Key) -> None:
-        """Handle keyboard events (Escape, Enter)."""
+        """Handle keyboard events (Escape, Enter, Space)."""
         if event.key == "escape":
             logger.debug("Escape key pressed, closing dialog")
             self.hide()
@@ -97,6 +127,20 @@ class FloppyMixDialog(Container):
             self.app.call_later(self.start_mixing)
             event.prevent_default()
             event.stop()
+        elif event.key == "space" and self.mixing_state == "previewing":
+            logger.debug("Space key pressed during preview, toggling playback")
+            self._toggle_preview_playback()
+            event.prevent_default()
+            event.stop()
+    
+    def _toggle_preview_playback(self) -> None:
+        """Toggle play/pause for the mix preview."""
+        if self.audio_player.is_playing():
+            self.audio_player.pause()
+            logger.debug("Paused mix preview")
+        else:
+            self.audio_player.resume()
+            logger.debug("Resumed mix preview")
         
     async def start_mixing(self) -> None:
         """Initiate the mixing process with selected tracks and instructions."""
@@ -187,10 +231,41 @@ class FloppyMixDialog(Container):
         
         if self._progress_panel:
             self._progress_panel.hide_loading()
-            self._progress_panel.update_status("✓ Mix complete! Preview ready.")
+            self._progress_panel.update_status("✓ Mix complete! Playing preview...")
             self._progress_panel.show_preview_controls()
         
-        self.app.notify("Mix complete! Preview functionality coming soon.", severity="information")
+        self._start_preview_playback()
+    
+    def _start_preview_playback(self) -> None:
+        """Load and automatically play the generated mix file."""
+        if not self._mix_file_path:
+            logger.error("Cannot start preview: no mix file path")
+            return
+        
+        try:
+            mix_path = Path(self._mix_file_path)
+            if not mix_path.exists():
+                logger.error(f"Mix file not found: {self._mix_file_path}")
+                self.app.notify("❌ Mix file not found", severity="error")
+                return
+            
+            mix_track = Track(
+                title="Floppy Mix Preview",
+                artist="AI DJ",
+                album="Generated Mix",
+                duration=Track._format_duration(0),
+                file_path=str(mix_path),
+                duration_seconds=0
+            )
+            
+            logger.info(f"Loading mix preview: {self._mix_file_path}")
+            self.audio_player.play(mix_track)
+            
+            self.app.notify("🎵 Mix preview playing! Press Space to pause.", severity="information")
+            
+        except Exception as e:
+            logger.error(f"Failed to start mix preview: {e}")
+            self.app.notify(f"❌ Failed to play mix: {str(e)}", severity="error")
         
     def on_mix_error(self, error: str) -> None:
         """Handle mixing errors."""
