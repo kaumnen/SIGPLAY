@@ -64,7 +64,6 @@ class SigplayApp(App):
         Binding("m", "toggle_mute", "Mute", priority=True),
         Binding("f", "show_floppy_mix", "Floppy Mix Page", priority=True),
         Binding("d", "back_to_main", "Default Page", priority=True),
-        Binding("o", "select_device", "Device", priority=True),
         Binding("h", "show_help", "Help", priority=True),
         Binding("?", "show_help", "Help", show=False, priority=True),
     ]
@@ -283,10 +282,6 @@ class SigplayApp(App):
         
         now_playing = self.query_one("#now_playing", NowPlayingView)
         now_playing._update_progress()
-    
-    def action_select_device(self) -> None:
-        """Select audio output device (stub for future feature)."""
-        self.notify("Audio device selection coming soon!", severity="information")
     
     def action_show_floppy_mix(self) -> None:
         """Show the Floppy Mix view."""
