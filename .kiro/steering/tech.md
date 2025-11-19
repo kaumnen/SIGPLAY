@@ -107,15 +107,37 @@ switcher.current = "feature-view"
 ```python
 # Create modal screen for user input
 class PromptScreen(ModalScreen[str | None]):
+    BINDINGS = [
+        ("escape", "dismiss(None)", "Cancel"),
+    ]
+    
     def compose(self) -> ComposeResult:
         with Container():
             yield Label("Enter value:")
             yield Input(id="input")
             yield Button("OK")
     
+    def on_mount(self) -> None:
+        """Focus input on mount."""
+        self.call_after_refresh(self._focus_input)
+    
+    def _focus_input(self) -> None:
+        """Focus the input after screen is fully rendered."""
+        input_widget = self.query_one("#input", Input)
+        input_widget.focus()
+    
     def on_button_pressed(self, event: Button.Pressed) -> None:
         input_value = self.query_one("#input", Input).value
         self.dismiss(input_value)
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in input."""
+        self.dismiss(event.value.strip() if event.value.strip() else None)
+    
+    def on_key(self, event: events.Key) -> None:
+        """Prevent key events from propagating to parent app."""
+        if event.key not in ("escape",):
+            event.stop()
 
 # Use modal screen with callback
 self.app.push_screen(PromptScreen(), callback=self.handle_input)

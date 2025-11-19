@@ -53,7 +53,7 @@
 - [x] 4. Implement Strands Agents DJ agent
 - [x] 4.1 Create DJ agent script
   - Create floppy_mix_agent.py with Strands Agent configuration
-  - Configure AWS Bedrock model (Claude)
+  - Configure OpenRouter model (OpenAI-compatible API)
   - Write system prompt for DJ/audio engineer persona
   - Set up Python execution tools
   - Add file system access capabilities
@@ -222,7 +222,7 @@
   - **Validates: Requirements 10.2**
 
 - [ ] 12. Add styling
-- [ ] 12.1 Create Floppy Mix dialog styles
+- [ ] 12.1 Create Floppy Mix dialog styles``
   - Add styles to styles/app.tcss for all dialog components
   - Use retro orange color palette
   - Style track selection indicators
