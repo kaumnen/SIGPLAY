@@ -4,7 +4,7 @@ from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
 from textual import events
 from textual.app import ComposeResult
-from textual.widgets import Label, Input, Button
+from textual.widgets import Label, Input, Button, Static, LoadingIndicator
 from textual.screen import ModalScreen
 from models.track import Track, format_time
 from pathlib import Path
@@ -14,7 +14,6 @@ import re
 
 from widgets.track_selection_panel import TrackSelectionPanel
 from widgets.instructions_panel import InstructionsPanel
-from widgets.mix_progress_panel import MixProgressPanel
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,9 @@ class FloppyMixView(Container):
         
         self._track_panel: TrackSelectionPanel | None = None
         self._instructions_panel: InstructionsPanel | None = None
-        self._progress_panel: MixProgressPanel | None = None
+        self._loading_indicator: LoadingIndicator | None = None
+        self._status_display: Static | None = None
+        self._controls_container: Horizontal | None = None
     
     def compose(self) -> ComposeResult:
         """Compose the view layout."""
@@ -41,23 +42,29 @@ class FloppyMixView(Container):
                 with Horizontal(id="floppy-mix-title-row"):
                     yield Label("💾 Floppy Mix", id="floppy-mix-title")
                     yield Button("🎵 Start Mix", id="start-mix-button", variant="primary")
-                yield Label(
-                    "AI-powered DJ mixing: Create seamless mixes • Match tempos • Add DJ effects • Smart transitions",
-                    id="floppy-mix-capabilities"
-                )
+                with Horizontal(id="floppy-mix-status-row"):
+                    yield LoadingIndicator(id="progress-spinner")
+                    yield Static("Select tracks (Space), add instructions (Tab to switch), then select Start Mix.", id="status-display")
+                with Horizontal(id="floppy-mix-controls-row"):
+                    yield Button("💾 Save Mix", id="save-button", variant="success")
+                    yield Button("🗑️  Discard Mix", id="discard-button", variant="error")
             
             with Horizontal(id="floppy-mix-main-content"):
                 yield TrackSelectionPanel([], id="track-panel")
                 yield InstructionsPanel(id="instructions-panel")
-            
-            yield MixProgressPanel(id="progress-panel")
     
     def on_mount(self) -> None:
         """Set up panel references on mount."""
         try:
             self._track_panel = self.query_one("#track-panel", TrackSelectionPanel)
             self._instructions_panel = self.query_one("#instructions-panel", InstructionsPanel)
-            self._progress_panel = self.query_one("#progress-panel", MixProgressPanel)
+            self._loading_indicator = self.query_one("#progress-spinner", LoadingIndicator)
+            self._status_display = self.query_one("#status-display", Static)
+            self._controls_container = self.query_one("#floppy-mix-controls-row", Horizontal)
+            
+            self._loading_indicator.display = False
+            self._controls_container.display = False
+            
             logger.debug("Floppy Mix view panels mounted successfully")
         except Exception as e:
             logger.error(f"Error mounting view panels: {e}")
@@ -71,8 +78,7 @@ class FloppyMixView(Container):
             logger.debug(f"Loading {len(tracks)} tracks into Floppy Mix view")
             self._track_panel.refresh_tracks(tracks)
         
-        if self._progress_panel:
-            self._progress_panel.update_status("Select tracks (Space), add instructions (Tab to switch), then click Start Mix")
+        self._update_status("Select tracks (Space), add instructions (Tab to switch), then select Start Mix.")
         
         self.call_after_refresh(self._set_initial_focus)
     
@@ -99,9 +105,8 @@ class FloppyMixView(Container):
         
         if self._track_panel:
             self._track_panel.clear_selection()
-        if self._progress_panel:
-            self._progress_panel.hide_preview_controls()
-            self._progress_panel.update_status("Ready to mix")
+        self._hide_preview_controls()
+        self._update_status("Ready to mix")
     
     def _stop_preview_playback(self) -> None:
         """Stop playback of the mix preview."""
@@ -136,14 +141,6 @@ class FloppyMixView(Container):
             event.prevent_default()
             event.stop()
     
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button presses."""
-        if event.button.id == "start-mix-button":
-            logger.debug("Start mix button pressed")
-            self.app.call_later(self.start_mixing)
-            event.prevent_default()
-            event.stop()
-    
     def _toggle_preview_playback(self) -> None:
         """Toggle play/pause for the mix preview."""
         if self.audio_player.is_playing():
@@ -170,9 +167,8 @@ class FloppyMixView(Container):
         
         self.mixing_state = "mixing"
         
-        if self._progress_panel:
-            self._progress_panel.update_status("Preparing mix request...")
-            self._progress_panel.show_loading()
+        self._update_status("Preparing mix request...")
+        self._show_loading()
         
         self.app.notify("🎵 Starting mix...", severity="information")
         
@@ -187,9 +183,8 @@ class FloppyMixView(Container):
             client = DJAgentClient()
             
             def progress_update(status: str) -> None:
-                """Update progress panel with agent status."""
-                if self._progress_panel:
-                    self._progress_panel.update_status(status)
+                """Update status display with agent status."""
+                self._update_status(status)
             
             mix_file_path = await client.create_mix(
                 tracks=selected_tracks,
@@ -229,10 +224,9 @@ class FloppyMixView(Container):
         self._mix_file_path = mix_file_path
         self.mixing_state = "previewing"
         
-        if self._progress_panel:
-            self._progress_panel.hide_loading()
-            self._progress_panel.update_status("✓ Mix complete! Playing preview...")
-            self._progress_panel.show_preview_controls()
+        self._hide_loading()
+        self._update_status("✓ Mix complete! Playing preview...")
+        self._show_preview_controls()
         
         self._start_preview_playback()
         
@@ -283,21 +277,28 @@ class FloppyMixView(Container):
         logger.error(f"Mix error: {error}")
         self.mixing_state = "idle"
         
-        if self._progress_panel:
-            self._progress_panel.hide_loading()
-            self._progress_panel.update_status(f"❌ Mix failed: {error}")
+        self._hide_loading()
+        self._update_status(f"❌ Mix failed: {error}")
         
         self.app.notify(f"❌ Mix failed: {error}", severity="error", timeout=8)
     
-    def on_mix_progress_panel_save_requested(self, event: MixProgressPanel.SaveRequested) -> None:
-        """Handle save button press."""
-        logger.info("Save mix requested")
-        self._save_mix()
-    
-    def on_mix_progress_panel_discard_requested(self, event: MixProgressPanel.DiscardRequested) -> None:
-        """Handle discard button press."""
-        logger.info("Discard mix requested")
-        self._discard_mix()
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "start-mix-button":
+            logger.debug("Start mix button pressed")
+            self.app.call_later(self.start_mixing)
+            event.prevent_default()
+            event.stop()
+        elif event.button.id == "save-button":
+            logger.info("Save mix requested")
+            self._save_mix()
+            event.prevent_default()
+            event.stop()
+        elif event.button.id == "discard-button":
+            logger.info("Discard mix requested")
+            self._discard_mix()
+            event.prevent_default()
+            event.stop()
     
     def _save_mix(self) -> None:
         """Save the generated mix to the Music Library directory."""
@@ -377,8 +378,7 @@ class FloppyMixView(Container):
                 self._track_panel.clear_selection()
             if self._instructions_panel:
                 self._instructions_panel.clear()
-            if self._progress_panel:
-                self._progress_panel.hide_preview_controls()
+            self._hide_preview_controls()
             
             self.app.run_worker(self._refresh_library_after_save, exclusive=False)
             
@@ -473,12 +473,41 @@ class FloppyMixView(Container):
             self._track_panel.clear_selection()
         if self._instructions_panel:
             self._instructions_panel.clear()
-        if self._progress_panel:
-            self._progress_panel.hide_preview_controls()
-            self._progress_panel.update_status("Ready to mix")
+        self._hide_preview_controls()
+        self._update_status("Ready to mix")
         
         self.app.notify("Mix discarded", severity="information")
         logger.debug("Mix discarded and view reset")
+    
+    def _update_status(self, message: str) -> None:
+        """Update the status message."""
+        if self._status_display:
+            self._status_display.update(message)
+        logger.debug(f"Status updated: {message}")
+    
+    def _show_preview_controls(self) -> None:
+        """Display save/discard buttons."""
+        if self._controls_container:
+            self._controls_container.display = True
+        if self._loading_indicator:
+            self._loading_indicator.display = False
+        logger.debug("Showing preview controls")
+    
+    def _hide_preview_controls(self) -> None:
+        """Hide save/discard buttons."""
+        if self._controls_container:
+            self._controls_container.display = False
+        logger.debug("Hiding preview controls")
+    
+    def _show_loading(self) -> None:
+        """Show loading indicator."""
+        if self._loading_indicator:
+            self._loading_indicator.display = True
+    
+    def _hide_loading(self) -> None:
+        """Hide loading indicator."""
+        if self._loading_indicator:
+            self._loading_indicator.display = False
 
 
 class FilenamePromptScreen(ModalScreen[str | None]):

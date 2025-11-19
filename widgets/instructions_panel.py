@@ -18,7 +18,7 @@ class InstructionsPanel(Container):
     def compose(self) -> ComposeResult:
         """Yield TextArea widget."""
         with Vertical(id="instructions-container"):
-            yield Label("Mixing Instructions (natural language)", id="instructions-label")
+            yield Label("Floppy Mix Instructions", id="instructions-label")
             yield TextArea(
                 text="",
                 language="markdown",

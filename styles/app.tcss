@@ -219,13 +219,19 @@ FloppyMixView {
     padding: 0 1;
 }
 
-#floppy-mix-capabilities {
-    color: #ffb347;
-    text-align: center;
-    background: #1a1a1a;
+#floppy-mix-status-row {
     width: 100%;
-    padding: 1;
-    border: solid #cc5500;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    padding: 0 1;
+}
+
+#floppy-mix-controls-row {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    padding: 0 1;
 }
 
 #floppy-mix-main-content {
@@ -327,27 +333,6 @@ TextArea:focus {
     border: solid #ff8c00;
 }
 
-MixProgressPanel {
-    width: 100%;
-    height: auto;
-    background: #1a1a1a;
-    border: solid #ff8c00;
-    padding: 1;
-    margin-top: 1;
-}
-
-#progress-container {
-    width: 100%;
-    height: auto;
-}
-
-#status-row {
-    width: 100%;
-    height: auto;
-    align: center middle;
-    padding: 1;
-}
-
 #progress-spinner {
     width: auto;
     margin-right: 2;
@@ -356,13 +341,7 @@ MixProgressPanel {
 #status-display {
     color: #ffb347;
     text-align: left;
-}
-
-#controls-row {
-    width: 100%;
-    height: auto;
-    align: center middle;
-    padding: 1;
+    background: #2d2d2d;
 }
 
 #save-button {
