@@ -10,7 +10,7 @@ PROGRESS_UPDATE_INTERVAL = 1.0
 VU_METER_UPDATE_FPS = 60
 VU_METER_WIDTH = 40
 VU_PEAK_DECAY = 0.95
-RMS_AMPLIFICATION = 3.0
+RMS_AMPLIFICATION = 1.5
 
 
 class NowPlayingView(Container):
@@ -47,7 +47,6 @@ class NowPlayingView(Container):
         """Update all display widgets with current playback information."""
         current_track = self.audio_player.get_current_track()
         current_position = self.audio_player.get_position()
-        volume_level = self.audio_player.get_volume()
         playback_state = self.audio_player.get_state()
         
         if current_track:
