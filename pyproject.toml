@@ -16,7 +16,6 @@ dependencies = [
     "strands-agents-tools>=0.2.16",
     "strands-agents-builder>=0.1.10",
     "soundfile>=0.13.1",
-    "librosa>=0.11.0",
 ]
 
 [project.scripts]
