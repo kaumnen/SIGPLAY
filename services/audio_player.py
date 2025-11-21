@@ -27,8 +27,8 @@ class AudioPlayer:
         try:
             logger.info("Initializing audio player...")
             
-            self._current_track: Optional[Track] = None
-            self._playlist: List[Track] = []
+            self._current_track: Track | None = None
+            self._playlist: list[Track] = []
             self._current_index: int = -1
             self._volume: float = DEFAULT_VOLUME
             self._muted: bool = False
@@ -38,7 +38,7 @@ class AudioPlayer:
             self._pause_position: float = 0
             self._track_ended_naturally: bool = False
             
-            self._device: Optional[miniaudio.PlaybackDevice] = None
+            self._device: miniaudio.PlaybackDevice | None = None
             self._stream_generator = None
             self._stop_playback = threading.Event()
             self._pause_event = threading.Event()

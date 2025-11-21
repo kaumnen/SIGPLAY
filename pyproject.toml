@@ -11,7 +11,6 @@ dependencies = [
     "numpy>=1.26.0",
     "miniaudio>=1.61",
     "pedalboard>=0.9.19",
-    "hypothesis>=6.148.2",
     "strands-agents[openai]>=1.17.0",
     "strands-agents-tools>=0.2.16",
     "strands-agents-builder>=0.1.10",

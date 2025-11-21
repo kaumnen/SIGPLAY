@@ -43,11 +43,6 @@ Footer {
     border: solid #cc5500;
 }
 
-#main-container {
-    height: 1fr;
-    background: #1a1a1a;
-}
-
 #top-container {
     height: 2fr;
     width: 100%;
@@ -278,12 +273,6 @@ TrackSelectionPanel {
 #track-list ListItem Static {
     width: auto;
     min-width: 100%;
-}
-
-#no-tracks-message {
-    color: #ffb347;
-    text-align: center;
-    padding: 2;
 }
 
 ListItem.selected {
