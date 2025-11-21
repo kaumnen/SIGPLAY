@@ -6,7 +6,7 @@ inclusion: always
 
 ## Core Technologies
 
-- **Python**: 3.13+ (specified in `.python-version`)
+- **Python**: 3.14+ (specified in `.python-version`)
 - **Framework**: Textual 6.5.0+ - TUI framework for terminal applications
 - **Package Manager**: `uv` - see uv-steering.md for dependency management rules
 - **Audio**: miniaudio for playback (MP3, WAV, OGG, FLAC support)
@@ -266,17 +266,29 @@ def apply_effects(
     track_id: str,
     reverb_room_size: float = 0.0,
     compressor_threshold_db: float = 0.0,
+    chorus_rate_hz: float = 0.0,
+    delay_seconds: float = 0.0,
+    highpass_cutoff_hz: float = 0.0,
+    lowpass_cutoff_hz: float = 0.0,
+    bass_boost_db: float = 0.0,
+    treble_boost_db: float = 0.0,
     gain_db: float = 0.0
 ) -> str:
-    """Apply audio effects to a loaded track."""
+    """Apply audio effects to a loaded track.
+    
+    All parameters are optional (0 = off). Examples:
+    - Boost bass: bass_boost_db=4 to 6
+    - Reduce bass: bass_boost_db=-3 to -6
+    - Boost treble: treble_boost_db=3 to 5
+    - Add reverb: reverb_room_size=0.3-0.5
+    - Compress: compressor_threshold_db=-12 to -15
+    - Remove rumble: highpass_cutoff_hz=80-100
+    - Add warmth: lowpass_cutoff_hz=10000-12000
+    """
     # Implementation using Pedalboard effects
     return f"✓ Applied effects to {track_id}"
 
-@tool
-def change_tempo(track_id: str, speed_factor: float) -> str:
-    """Change playback speed/tempo without changing pitch."""
-    # Implementation using librosa time_stretch
-    return f"✓ Changed tempo of {track_id}: {speed_factor}x speed"
+
 
 @tool
 def add_track_to_mix(
@@ -390,8 +402,11 @@ When writing system prompts for agents:
 - `OPENROUTER_API_KEY` (required): API key from https://openrouter.ai/keys
   - Can be set via environment variable or provided at runtime via modal prompt
   - Session-level API keys stored in app state for current session only
-- `OPENROUTER_MODEL` (optional): Model to use (default: `anthropic/claude-haiku-4.5`)
+- `SIGPLAY_MIX_MODEL_ID` (optional): Model to use for Floppy Mix (default: `anthropic/claude-haiku-4.5`)
+  - Can be set via environment variable or provided at runtime via modal prompt
+  - Session-level model IDs stored in app state for current session only
   - Available models: https://openrouter.ai/models
+- `OPENROUTER_MODEL` (optional): Legacy alias for `SIGPLAY_MIX_MODEL_ID`
 
 ## Performance Considerations
 

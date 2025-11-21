@@ -157,18 +157,21 @@ The AI agent interprets instructions and applies appropriate:
 
 ### Configuration
 Users can configure OpenRouter in two ways:
-1. **Environment variable** (persistent): Set `OPENROUTER_API_KEY` in shell profile
-2. **Runtime prompt** (session-only): Enter API key when prompted on first use
+1. **Environment variable** (persistent): Set `OPENROUTER_API_KEY` and optionally `SIGPLAY_MIX_MODEL_ID` in shell profile
+2. **Runtime prompt** (session-only): Enter API key and model ID when prompted on first use
 
-Optional environment variable:
-- `OPENROUTER_MODEL`: Model to use (optional, default: `anthropic/claude-haiku-4.5`)
+Environment variables:
+- `OPENROUTER_API_KEY` (required): API key from https://openrouter.ai/keys
+- `SIGPLAY_MIX_MODEL_ID` (optional): Model to use (default: `anthropic/claude-haiku-4.5`)
 
-### API Key Prompt
-If no API key is configured, the app displays a modal prompt:
-- User can paste API key for current session only
+### Configuration Prompt
+If no API key is configured, the app displays a modal prompt with two inputs:
+- **API Key**: User can paste API key for current session only
+- **Model ID**: User can specify which OpenRouter model to use (defaults to `anthropic/claude-haiku-4.5`)
 - Includes instructions for generating keys at https://openrouter.ai/keys
 - Can cancel to exit Floppy Mix feature
-- Session keys are not persisted to disk
+- Session credentials are not persisted to disk
+- Supports Tab/Enter navigation between fields
 
 ### Error Handling
 - Validates track selection (at least 1 track required)
