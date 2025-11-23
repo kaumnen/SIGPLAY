@@ -10,7 +10,7 @@
   - **Property 11: Cache format round-trip**
   - **Validates: Requirements 3.5**
 
-- [ ] 2. Implement LyricsService with Whisper integration
+- [x] 2. Implement LyricsService with Whisper integration
   - Create `services/lyrics_service.py` with `LyricsService` class
   - Implement cache directory setup in `__init__` method
   - Implement `_get_model()` method for lazy loading Whisper large-v3 model with int8 quantization
