@@ -577,3 +577,100 @@ HelpScreen {
 #help-close-button:focus {
     border: solid #ff8c00;
 }
+
+LyricsView {
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+}
+
+#lyrics-container {
+    width: 100%;
+    height: 100%;
+}
+
+#lyrics-library-panel {
+    width: 30;
+    height: 100%;
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+}
+
+#lyrics-library-title {
+    color: #ff8c00;
+    text-style: bold;
+    padding: 0 0 1 0;
+    margin-bottom: 1;
+    background: #1a1a1a;
+}
+
+#lyrics-track-list {
+    width: 100%;
+    height: 1fr;
+    background: #1a1a1a;
+    border: none;
+}
+
+#lyrics-display-panel {
+    width: 1fr;
+    height: 100%;
+    background: #1a1a1a;
+    border: solid #ff8c00;
+    padding: 1;
+    margin-left: 2;
+}
+
+#lyrics-panel-title {
+    color: #ff8c00;
+    text-style: bold;
+    padding: 0 0 1 0;
+    margin-bottom: 1;
+    background: #1a1a1a;
+}
+
+#lyrics-loading {
+    width: auto;
+    margin-bottom: 1;
+}
+
+#lyrics-status {
+    color: #ffb347;
+    text-align: left;
+    background: #1a1a1a;
+    margin-bottom: 1;
+}
+
+#lyrics-scroll {
+    width: 100%;
+    height: 1fr;
+    background: #0a0a0a;
+    border: solid #cc5500;
+    padding: 1;
+}
+
+#lyrics-content {
+    width: 100%;
+    height: auto;
+    background: #0a0a0a;
+}
+
+.lyric-segment {
+    color: #cc5500;
+    padding: 0 1;
+    margin-bottom: 1;
+    background: #0a0a0a;
+}
+
+.lyric-segment.active {
+    color: #ff8c00;
+    text-style: bold;
+    background: #1a1a1a;
+}
+
+.lyrics-empty {
+    color: #ffb347;
+    text-align: center;
+    padding: 2;
+    background: #0a0a0a;
+}

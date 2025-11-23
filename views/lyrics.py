@@ -192,5 +192,46 @@ class LyricsView(Container):
             content.mount(label)
     
     def _update_active_segment(self) -> None:
-        """Update active segment based on playback position."""
-        pass
+        """Update active segment based on playback position.
+        
+        Called every 0.5 seconds to check playback position and update
+        the active segment highlight.
+        """
+        if not self.lyrics or not self._audio_player.is_playing():
+            return
+        
+        position = self._audio_player.get_position()
+        
+        new_index = -1
+        for i, segment in enumerate(self.lyrics):
+            if segment.start <= position < segment.end:
+                new_index = i
+                break
+        
+        if new_index != self.active_segment_index:
+            self.active_segment_index = new_index
+            self._highlight_active_segment()
+    
+    def _highlight_active_segment(self) -> None:
+        """Highlight the active segment and scroll to it.
+        
+        Applies 'active' CSS class to the current segment and removes it
+        from all others. Auto-scrolls to center the active segment.
+        """
+        try:
+            content = self.query_one("#lyrics-content", Container)
+            
+            for widget in content.query(".lyric-segment"):
+                widget.remove_class("active")
+            
+            if self.active_segment_index >= 0:
+                try:
+                    active = content.query_one(f"#lyric-{self.active_segment_index}")
+                    active.add_class("active")
+                    
+                    scroll = self.query_one("#lyrics-scroll", VerticalScroll)
+                    scroll.scroll_to_widget(active, animate=True, center=True)
+                except Exception as e:
+                    logger.debug(f"Error highlighting segment: {e}")
+        except Exception as e:
+            logger.error(f"Error in _highlight_active_segment: {e}")

@@ -90,7 +90,7 @@
   - **Property 20: Transcription status includes track name**
   - **Validates: Requirements 9.3**
 
-- [ ] 8. Implement playback synchronization
+- [x] 8. Implement playback synchronization
   - Implement `_update_active_segment()` method called every 0.5 seconds
   - Query AudioPlayer for current playback position
   - Find segment whose start/end times contain current position
