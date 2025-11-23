@@ -22,7 +22,7 @@
   - **Property 10: Cache key is MD5 hash of track path**
   - **Validates: Requirements 3.3**
 
-- [ ] 3. Implement lyrics transcription and caching
+- [x] 3. Implement lyrics transcription and caching
   - Implement `get_lyrics()` method in `LyricsService` with cache check
   - Implement transcription using Whisper model with word timestamps and beam_size=5
   - Implement progress callback support for status updates
