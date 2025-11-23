@@ -50,7 +50,7 @@
   - **Property 6: Transcription errors show error UI**
   - **Validates: Requirements 2.4**
 
-- [ ] 5. Create LyricsView layout and composition
+- [x] 5. Create LyricsView layout and composition
   - Create `views/lyrics.py` with `LyricsView` class
   - Implement `__init__` to accept `MusicLibrary`, `AudioPlayer`, and `LyricsService` dependencies
   - Implement `compose()` method with horizontal split layout
