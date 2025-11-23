@@ -18,7 +18,12 @@ from datetime import datetime
 
 from strands import Agent, tool
 from strands.models.openai import OpenAIModel
-from pedalboard import Pedalboard, Reverb, Compressor, Chorus, Delay, HighpassFilter, LowpassFilter, Gain, LowShelfFilter, HighShelfFilter
+from pedalboard import (
+    Pedalboard, Reverb, Compressor, Chorus, Delay, 
+    HighpassFilter, LowpassFilter, Gain, LowShelfFilter, HighShelfFilter,
+    LadderFilter, Phaser, Distortion, Clipping, Bitcrush, NoiseGate,
+    PitchShift, Mix
+)
 from pedalboard.io import AudioFile
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
@@ -87,7 +92,11 @@ def apply_effects(
     lowpass_cutoff_hz: float = 0.0,
     bass_boost_db: float = 0.0,
     treble_boost_db: float = 0.0,
-    gain_db: float = 0.0
+    gain_db: float = 0.0,
+    phaser_rate_hz: float = 0.0,
+    distortion_drive_db: float = 0.0,
+    noise_gate_threshold_db: float = 0.0,
+    pitch_shift_semitones: float = 0.0
 ) -> str:
     """Apply audio effects to a loaded track.
     
@@ -102,6 +111,10 @@ def apply_effects(
         bass_boost_db: Bass boost in dB (0=off, typical: 3-6 for more bass, negative to reduce bass)
         treble_boost_db: Treble boost in dB (0=off, typical: 3-6 for more treble, negative to reduce treble)
         gain_db: Gain adjustment in dB (0=no change, positive=louder, negative=quieter)
+        phaser_rate_hz: Phaser rate in Hz (0=off, typical: 0.5-2 for movement)
+        distortion_drive_db: Distortion drive in dB (0=off, typical: 10-20 for warmth)
+        noise_gate_threshold_db: Noise gate threshold in dB (0=off, typical: -40 to -50 to remove noise)
+        pitch_shift_semitones: Pitch shift in semitones (0=off, +/-12 for octave, +/-7 for fifth)
         
     Returns:
         Success message with applied effects
@@ -117,6 +130,10 @@ def apply_effects(
         effects = []
         applied = []
         
+        if noise_gate_threshold_db < 0:
+            effects.append(NoiseGate(threshold_db=noise_gate_threshold_db, ratio=10))
+            applied.append(f"noise_gate {noise_gate_threshold_db}dB")
+        
         if highpass_cutoff_hz > 0:
             effects.append(HighpassFilter(cutoff_frequency_hz=highpass_cutoff_hz))
             applied.append(f"highpass {highpass_cutoff_hz}Hz")
@@ -126,30 +143,40 @@ def apply_effects(
             applied.append(f"lowpass {lowpass_cutoff_hz}Hz")
             
         if bass_boost_db != 0:
-            # LowShelf at 200Hz covers bass frequencies
             effects.append(LowShelfFilter(cutoff_frequency_hz=200, gain_db=bass_boost_db, q=0.707))
             applied.append(f"bass {bass_boost_db:+.1f}dB")
             
         if treble_boost_db != 0:
-            # HighShelf at 3000Hz covers treble frequencies
             effects.append(HighShelfFilter(cutoff_frequency_hz=3000, gain_db=treble_boost_db, q=0.707))
             applied.append(f"treble {treble_boost_db:+.1f}dB")
+        
+        if distortion_drive_db > 0:
+            effects.append(Distortion(drive_db=distortion_drive_db))
+            applied.append(f"distortion {distortion_drive_db}dB")
         
         if compressor_threshold_db < 0:
             effects.append(Compressor(threshold_db=compressor_threshold_db))
             applied.append(f"compressor {compressor_threshold_db}dB")
         
-        if reverb_room_size > 0:
-            effects.append(Reverb(room_size=reverb_room_size))
-            applied.append(f"reverb {reverb_room_size}")
+        if pitch_shift_semitones != 0:
+            effects.append(PitchShift(semitones=pitch_shift_semitones))
+            applied.append(f"pitch {pitch_shift_semitones:+.1f}st")
         
         if chorus_rate_hz > 0:
             effects.append(Chorus(rate_hz=chorus_rate_hz))
             applied.append(f"chorus {chorus_rate_hz}Hz")
         
+        if phaser_rate_hz > 0:
+            effects.append(Phaser(rate_hz=phaser_rate_hz))
+            applied.append(f"phaser {phaser_rate_hz}Hz")
+        
         if delay_seconds > 0:
             effects.append(Delay(delay_seconds=delay_seconds))
             applied.append(f"delay {delay_seconds}s")
+        
+        if reverb_room_size > 0:
+            effects.append(Reverb(room_size=reverb_room_size))
+            applied.append(f"reverb {reverb_room_size}")
         
         if gain_db != 0:
             effects.append(Gain(gain_db=gain_db))
@@ -170,6 +197,223 @@ def apply_effects(
 
 
 
+
+
+@tool
+def apply_ladder_filter(
+    track_id: str,
+    mode: str = "LPF24",
+    cutoff_hz: float = 1000.0,
+    resonance: float = 0.0
+) -> str:
+    """Apply a Moog-style ladder filter with resonance for classic synth sounds.
+    
+    Args:
+        track_id: ID of the loaded track to process
+        mode: Filter mode - "LPF12", "LPF24", "HPF12", "HPF24", "BPF12", "BPF24"
+        cutoff_hz: Cutoff frequency in Hz (20-20000, typical: 200-5000)
+        resonance: Resonance amount (0.0-1.0, typical: 0.3-0.8 for character)
+        
+    Returns:
+        Success message with filter info
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        mode_map = {
+            "LPF12": LadderFilter.Mode.LPF12,
+            "LPF24": LadderFilter.Mode.LPF24,
+            "HPF12": LadderFilter.Mode.HPF12,
+            "HPF24": LadderFilter.Mode.HPF24,
+            "BPF12": LadderFilter.Mode.BPF12,
+            "BPF24": LadderFilter.Mode.BPF24
+        }
+        
+        filter_mode = mode_map.get(mode, LadderFilter.Mode.LPF24)
+        ladder = LadderFilter(mode=filter_mode, cutoff_hz=cutoff_hz, resonance=resonance)
+        
+        processed_audio = ladder(audio, sample_rate)
+        track_data['audio'] = processed_audio
+        
+        logger.info(f"Applied ladder filter to {track_id}: {mode} @ {cutoff_hz}Hz, res={resonance}")
+        return f"✓ Applied ladder filter to {track_id}: {mode} @ {cutoff_hz}Hz, resonance={resonance}"
+        
+    except Exception as e:
+        logger.error(f"Failed to apply ladder filter to {track_id}: {e}")
+        return f"✗ Error applying ladder filter to {track_id}: {str(e)}"
+
+
+@tool
+def apply_parallel_effects(
+    track_id: str,
+    dry_gain_db: float = 0.0,
+    wet_reverb_room_size: float = 0.0,
+    wet_delay_seconds: float = 0.0,
+    wet_gain_db: float = -6.0
+) -> str:
+    """Apply parallel effects processing (dry/wet mix) for more control.
+    
+    Args:
+        track_id: ID of the loaded track to process
+        dry_gain_db: Gain for dry (unprocessed) signal in dB
+        wet_reverb_room_size: Reverb room size for wet signal (0.0-1.0)
+        wet_delay_seconds: Delay time for wet signal in seconds
+        wet_gain_db: Gain for wet (processed) signal in dB (typically -3 to -6)
+        
+    Returns:
+        Success message with parallel processing info
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        dry_chain = Pedalboard([Gain(gain_db=dry_gain_db)])
+        
+        wet_effects = []
+        if wet_reverb_room_size > 0:
+            wet_effects.append(Reverb(room_size=wet_reverb_room_size, wet_level=1.0))
+        if wet_delay_seconds > 0:
+            wet_effects.append(Delay(delay_seconds=wet_delay_seconds, mix=1.0))
+        wet_effects.append(Gain(gain_db=wet_gain_db))
+        
+        wet_chain = Pedalboard(wet_effects)
+        
+        board = Pedalboard([
+            Mix([dry_chain, wet_chain])
+        ])
+        
+        processed_audio = board(audio, sample_rate)
+        track_data['audio'] = processed_audio
+        
+        logger.info(f"Applied parallel effects to {track_id}: dry={dry_gain_db}dB, wet={wet_gain_db}dB")
+        return f"✓ Applied parallel effects to {track_id}: dry={dry_gain_db}dB, wet reverb={wet_reverb_room_size}, delay={wet_delay_seconds}s"
+        
+    except Exception as e:
+        logger.error(f"Failed to apply parallel effects to {track_id}: {e}")
+        return f"✗ Error applying parallel effects to {track_id}: {str(e)}"
+
+
+@tool
+def apply_creative_effects(
+    track_id: str,
+    bitcrush_bit_depth: int = 0,
+    clipping_threshold_db: float = 0.0
+) -> str:
+    """Apply creative lo-fi and distortion effects.
+    
+    Args:
+        track_id: ID of the loaded track to process
+        bitcrush_bit_depth: Bit depth for lo-fi effect (0=off, 4-12 for lo-fi sound)
+        clipping_threshold_db: Hard clipping threshold in dB (0=off, -6 to -3 for aggressive sound)
+        
+    Returns:
+        Success message with creative effects info
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        effects = []
+        applied = []
+        
+        if bitcrush_bit_depth > 0:
+            effects.append(Bitcrush(bit_depth=bitcrush_bit_depth))
+            applied.append(f"bitcrush {bitcrush_bit_depth}bit")
+        
+        if clipping_threshold_db < 0:
+            effects.append(Clipping(threshold_db=clipping_threshold_db))
+            applied.append(f"clipping {clipping_threshold_db}dB")
+        
+        if effects:
+            board = Pedalboard(effects)
+            processed_audio = board(audio, sample_rate)
+            track_data['audio'] = processed_audio
+            logger.info(f"Applied creative effects to {track_id}: {', '.join(applied)}")
+            return f"✓ Applied creative effects to {track_id}: {', '.join(applied)}"
+        else:
+            return f"✓ No creative effects applied to {track_id}"
+        
+    except Exception as e:
+        logger.error(f"Failed to apply creative effects to {track_id}: {e}")
+        return f"✗ Error applying creative effects to {track_id}: {str(e)}"
+
+
+@tool
+def automate_filter_sweep(
+    track_id: str,
+    start_cutoff_hz: float = 200.0,
+    end_cutoff_hz: float = 5000.0,
+    filter_mode: str = "LPF24",
+    resonance: float = 0.5
+) -> str:
+    """Automate a filter sweep across the entire track for dynamic movement.
+    
+    Args:
+        track_id: ID of the loaded track to process
+        start_cutoff_hz: Starting cutoff frequency in Hz
+        end_cutoff_hz: Ending cutoff frequency in Hz
+        filter_mode: Filter mode - "LPF24", "HPF24", "BPF24"
+        resonance: Resonance amount (0.0-1.0)
+        
+    Returns:
+        Success message with automation info
+    """
+    try:
+        if track_id not in _audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        track_data = _audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        mode_map = {
+            "LPF24": LadderFilter.Mode.LPF24,
+            "HPF24": LadderFilter.Mode.HPF24,
+            "BPF24": LadderFilter.Mode.BPF24
+        }
+        
+        filter_obj = LadderFilter(
+            mode=mode_map.get(filter_mode, LadderFilter.Mode.LPF24),
+            cutoff_hz=start_cutoff_hz,
+            resonance=resonance
+        )
+        
+        chunk_size = 4096
+        output = np.zeros_like(audio)
+        num_chunks = int(np.ceil(audio.shape[1] / chunk_size))
+        
+        for i in range(num_chunks):
+            start = i * chunk_size
+            end = min(start + chunk_size, audio.shape[1])
+            chunk = audio[:, start:end]
+            
+            progress = i / num_chunks
+            filter_obj.cutoff_hz = start_cutoff_hz + (end_cutoff_hz - start_cutoff_hz) * progress
+            
+            processed = filter_obj(chunk, sample_rate, reset=False)
+            output[:, start:end] = processed
+        
+        track_data['audio'] = output
+        
+        logger.info(f"Applied filter sweep to {track_id}: {start_cutoff_hz}Hz -> {end_cutoff_hz}Hz")
+        return f"✓ Applied filter sweep to {track_id}: {start_cutoff_hz}Hz -> {end_cutoff_hz}Hz ({filter_mode})"
+        
+    except Exception as e:
+        logger.error(f"Failed to apply filter sweep to {track_id}: {e}")
+        return f"✗ Error applying filter sweep to {track_id}: {str(e)}"
 
 
 @tool
@@ -296,7 +540,7 @@ Your role is to create professional DJ mixes using the provided audio processing
 
 WORKFLOW:
 1. Load each track using load_audio_track(track_path, track_id)
-2. Apply effects to each track using apply_effects(track_id, ...)
+2. Apply effects to each track using the various effect tools
 3. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
 4. Render the final mix using render_final_mix(output_path)
 
@@ -306,23 +550,46 @@ AVAILABLE TOOLS:
    - Loads an audio file into memory
    - Use track_id like 'track_1', 'track_2', etc.
 
-2. apply_effects(track_id, reverb_room_size, compressor_threshold_db, chorus_rate_hz, delay_seconds, highpass_cutoff_hz, lowpass_cutoff_hz, bass_boost_db, treble_boost_db, gain_db)
-   - Apply audio effects to a loaded track
+2. apply_effects(track_id, ...)
+   - Apply standard audio effects to a loaded track
+   - Parameters: reverb_room_size, compressor_threshold_db, chorus_rate_hz, delay_seconds,
+     highpass_cutoff_hz, lowpass_cutoff_hz, bass_boost_db, treble_boost_db, gain_db,
+     phaser_rate_hz, distortion_drive_db, noise_gate_threshold_db, pitch_shift_semitones
    - All parameters are optional (0 = off)
    - Examples:
      * Boost bass: bass_boost_db=4 to 6
-     * Reduce bass: bass_boost_db=-3 to -6
-     * Boost treble: treble_boost_db=3 to 5
-     * Add reverb: reverb_room_size=0.5
-     * Compress: compressor_threshold_db=-15
-     * Remove rumble: highpass_cutoff_hz=80 to 100
+     * Add warmth: distortion_drive_db=10 to 15
+     * Movement: phaser_rate_hz=0.5 to 1.5
+     * Clean noise: noise_gate_threshold_db=-40 to -50
+     * Harmonic mixing: pitch_shift_semitones=+/-7 (fifth) or +/-12 (octave)
 
-3. add_track_to_mix(track_id, crossfade_duration, start_time, end_time)
+3. apply_ladder_filter(track_id, mode, cutoff_hz, resonance)
+   - Apply Moog-style resonant filter for classic synth sounds
+   - Modes: "LPF24" (low-pass), "HPF24" (high-pass), "BPF24" (band-pass)
+   - Resonance: 0.3-0.8 for character, higher for dramatic effect
+   - Great for creating tension and release
+
+4. apply_parallel_effects(track_id, dry_gain_db, wet_reverb_room_size, wet_delay_seconds, wet_gain_db)
+   - Process dry and wet signals separately for more control
+   - Maintains clarity while adding depth
+   - Typical: dry_gain_db=0, wet_gain_db=-6
+
+5. apply_creative_effects(track_id, bitcrush_bit_depth, clipping_threshold_db)
+   - Lo-fi and aggressive effects
+   - Bitcrush: 4-12 bits for retro/lo-fi sound
+   - Clipping: -6 to -3 dB for aggressive distortion
+
+6. automate_filter_sweep(track_id, start_cutoff_hz, end_cutoff_hz, filter_mode, resonance)
+   - Automate filter cutoff across entire track
+   - Creates dynamic movement and builds tension
+   - Example: 200Hz -> 5000Hz for build-up
+
+7. add_track_to_mix(track_id, crossfade_duration, start_time, end_time)
    - Add a processed track to the final mix
    - crossfade_duration: seconds to blend with previous track (typical: 2-6 seconds)
    - start_time/end_time: optional trimming (in seconds)
 
-4. render_final_mix(output_path, normalize)
+8. render_final_mix(output_path, normalize)
    - Render and save the final mix
    - normalize=True prevents clipping (recommended)
 
@@ -333,18 +600,32 @@ MIXING BEST PRACTICES:
 - Normalize the final output to prevent clipping
 - Match energy levels between tracks with gain adjustments
 - Use EQ (bass/treble boost) to shape the overall sound
+- Add phaser/chorus for movement and depth
+- Use parallel processing to maintain clarity while adding effects
+- Apply filter sweeps for dramatic builds and transitions
+- Use pitch shifting for harmonic mixing (key matching)
+- Clean up recordings with noise gate before processing
+
+CREATIVE TECHNIQUES:
+- Filter sweeps: Build tension with automate_filter_sweep (200Hz -> 5000Hz)
+- Parallel reverb: Use apply_parallel_effects for depth without muddiness
+- Lo-fi vibes: Use bitcrush (8-bit) + distortion for retro sound
+- Harmonic mixing: Pitch shift tracks by +/-7 semitones (fifth) for key matching
+- Movement: Combine phaser + chorus for swirling effects
+- Warmth: Subtle distortion (10-15dB) + bass boost for analog feel
 
 EXAMPLE WORKFLOW:
 1. load_audio_track('/path/track1.mp3', 'track_1')
 2. load_audio_track('/path/track2.mp3', 'track_2')
-3. apply_effects('track_1', compressor_threshold_db=-12, bass_boost_db=3)
-4. apply_effects('track_2', compressor_threshold_db=-12, bass_boost_db=3)
-5. add_track_to_mix('track_1', crossfade_duration=0)
-6. add_track_to_mix('track_2', crossfade_duration=4.0)
-7. render_final_mix('/output/mix.wav', normalize=True)
+3. apply_effects('track_1', compressor_threshold_db=-12, bass_boost_db=3, phaser_rate_hz=0.8)
+4. apply_parallel_effects('track_2', wet_reverb_room_size=0.4, wet_gain_db=-6)
+5. automate_filter_sweep('track_2', start_cutoff_hz=200, end_cutoff_hz=5000)
+6. add_track_to_mix('track_1', crossfade_duration=0)
+7. add_track_to_mix('track_2', crossfade_duration=4.0)
+8. render_final_mix('/output/mix.wav', normalize=True)
 
 Interpret the user's natural language instructions and translate them into appropriate tool calls.
-Focus on effects, EQ, and smooth transitions rather than tempo matching.
+Be creative and use the full range of available effects to create professional, engaging mixes.
 """
 
 
@@ -371,7 +652,16 @@ def create_dj_agent() -> Agent:
     agent = Agent(
         model=model,
         system_prompt=DJ_AGENT_SYSTEM_PROMPT,
-        tools=[load_audio_track, apply_effects, add_track_to_mix, render_final_mix]
+        tools=[
+            load_audio_track,
+            apply_effects,
+            apply_ladder_filter,
+            apply_parallel_effects,
+            apply_creative_effects,
+            automate_filter_sweep,
+            add_track_to_mix,
+            render_final_mix
+        ]
     )
     
     return agent
@@ -436,20 +726,28 @@ Output file: {output_path}
 
 Use the available tools to:
 1. Load each track with load_audio_track(path, 'track_1'), load_audio_track(path, 'track_2'), etc.
-2. Apply effects based on the user's instructions using apply_effects()
+2. Apply effects based on the user's instructions using the various effect tools
 3. Add each track to the mix with add_track_to_mix() (use 2-6 second crossfades)
 4. Render the final mix with render_final_mix('{output_path}', normalize=True)
 
 Interpret the user's instructions and apply appropriate effects. If they mention:
-- "boost bass" or "more bass" or "increase bass": use bass_boost_db=4 to 6
+- "boost bass" or "more bass": use bass_boost_db=4 to 6
 - "reduce bass" or "less bass": use bass_boost_db=-3 to -6
-- "boost treble" or "more treble" or "brighter": use treble_boost_db=3 to 5
-- "smooth" or "reverb": use reverb_room_size=0.3-0.5
+- "boost treble" or "brighter": use treble_boost_db=3 to 5
+- "smooth" or "reverb": use reverb_room_size=0.3-0.5 or apply_parallel_effects()
 - "compress" or "consistent volume": use compressor_threshold_db=-12 to -15
 - "remove rumble" or "clean bass": use highpass_cutoff_hz=80-100
-- "warm" or "mellow": use lowpass_cutoff_hz=10000-12000
+- "warm" or "mellow": use lowpass_cutoff_hz=10000-12000 or distortion_drive_db=10-15
+- "movement" or "swirl": use phaser_rate_hz=0.5-1.5 or chorus_rate_hz=1-3
+- "lo-fi" or "retro": use apply_creative_effects() with bitcrush_bit_depth=8
+- "build" or "tension": use automate_filter_sweep() with increasing cutoff
+- "harmonic" or "key match": use pitch_shift_semitones=+/-7 or +/-12
+- "clean" or "remove noise": use noise_gate_threshold_db=-40 to -50
+- "aggressive" or "distorted": use distortion_drive_db=15-20 or clipping_threshold_db=-6
+- "resonant" or "synth": use apply_ladder_filter() with resonance=0.5-0.8
 - "crossfade" or "blend": use crossfade_duration=4-6 seconds
 
+Be creative and use the full range of tools to create an engaging mix that matches the user's vision.
 Start by loading all tracks, then apply effects, then add them to the mix, and finally render.
 """
     

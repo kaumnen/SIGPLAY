@@ -112,19 +112,47 @@ crossfades, and mixing techniques automatically.
   6. Save to library or discard
 
 [bold]EXAMPLE INSTRUCTIONS[/bold]
-  • "Mix these tracks with smooth 4-second crossfades"
-  • "Boost the bass and add some reverb"
+  Basic:
+  • "Mix with smooth 4-second crossfades and boost bass"
   • "Create a high-energy mix with compression"
-  • "Blend tracks smoothly with subtle effects"
-  • "Add warmth with bass boost and gentle compression"
+  • "Blend tracks smoothly with subtle reverb"
+  
+  Advanced:
+  • "Add lo-fi vibes with bitcrushing and warm distortion"
+  • "Use parallel reverb for depth without muddiness"
+  • "Create a filter sweep build-up for tension"
+  • "Add movement with phaser and chorus effects"
+  • "Shift the second track up a fifth for harmonic mixing"
 
-[bold]AVAILABLE EFFECTS[/bold]
-  Bass Boost      Enhance low frequencies
-  Treble Boost    Enhance high frequencies
+[bold]STANDARD EFFECTS[/bold]
+  Bass/Treble     Boost or cut frequencies
   Reverb          Add space and depth
   Compression     Even out volume levels
-  Crossfades      Smooth transitions (2-6 seconds)
-  EQ Filters      Shape the frequency spectrum
+  Chorus          Thicken and widen sound
+  Delay           Echo effects
+  Phaser          Swirling movement
+  Distortion      Warm analog saturation
+  Noise Gate      Remove background noise
+  Pitch Shift     Change key for harmonic mixing
+  EQ Filters      Shape frequency spectrum
+
+[bold]ADVANCED TECHNIQUES[/bold]
+  Ladder Filter       Moog-style resonant filters
+  Parallel Effects    Dry/wet processing for clarity
+  Filter Sweeps       Automate cutoff for builds
+  Lo-Fi Effects       Bitcrush and clipping
+  Harmonic Mixing     Pitch shift for key matching
+
+[bold]NATURAL LANGUAGE KEYWORDS[/bold]
+  "warm" "analog"     → Distortion + bass boost
+  "movement" "swirl"  → Phaser + chorus
+  "lo-fi" "retro"     → Bitcrushing
+  "build" "tension"   → Filter sweep automation
+  "clean" "noise"     → Noise gate
+  "aggressive"        → Clipping + distortion
+  "resonant" "synth"  → Ladder filter
+  "depth" "space"     → Parallel reverb
+  "harmonic" "key"    → Pitch shifting
 
 [bold]KEYBINDINGS[/bold]
   Space       Toggle track selection / Play preview
