@@ -9,9 +9,10 @@ import os
 from pathlib import Path
 
 from widgets import Header, HelpScreen
-from views import LibraryView, NowPlayingView, MetersView, FloppyMixView
+from views import LibraryView, NowPlayingView, MetersView, FloppyMixView, LyricsView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
+from services.lyrics_service import LyricsService
 
 
 class MainViewContainer(Vertical):
@@ -63,6 +64,7 @@ class SigplayApp(App):
         Binding("-", "volume_down", "Vol-", priority=True),
         Binding("m", "toggle_mute", "Mute", priority=True),
         Binding("f", "show_floppy_mix", "Floppy Mix Page", priority=True),
+        Binding("l", "show_lyrics", "Lyrics", priority=True),
         Binding("d", "back_to_main", "Default Page", priority=True),
         Binding("h", "show_help", "Help", priority=True),
         Binding("?", "show_help", "Help", show=False, priority=True),
@@ -80,6 +82,7 @@ class SigplayApp(App):
             raise
         
         self.music_library = MusicLibrary()
+        self.lyrics_service = LyricsService()
         self._session_openrouter_key: str | None = None
         logger.info("Services initialized successfully")
     
@@ -90,6 +93,7 @@ class SigplayApp(App):
         with ContentSwitcher(id="view-switcher", initial="main-view"):
             yield MainViewContainer(self.music_library, self.audio_player, id="main-view")
             yield FloppyMixView(self.audio_player, self.music_library, id="floppy-mix-view")
+            yield LyricsView(self.music_library, self.audio_player, self.lyrics_service, id="lyrics-view")
         
         yield Footer()
     
@@ -315,6 +319,18 @@ class SigplayApp(App):
             logger.error(f"Error showing Floppy Mix view: {e}")
             self.notify("❌ Cannot open Floppy Mix view", severity="error")
     
+    def action_show_lyrics(self) -> None:
+        """Show the Lyrics view."""
+        try:
+            switcher = self.query_one("#view-switcher", ContentSwitcher)
+            switcher.current = "lyrics-view"
+            
+            lyrics_view = self.query_one("#lyrics-view", LyricsView)
+            lyrics_view.on_show()
+        except Exception as e:
+            logger.error(f"Error showing Lyrics view: {e}")
+            self.notify("❌ Cannot open Lyrics view", severity="error")
+    
     def _check_openrouter_credentials(self) -> bool:
         """Check if OpenRouter credentials are available.
         
@@ -360,18 +376,21 @@ class SigplayApp(App):
             self.notify("❌ Cannot open Floppy Mix view", severity="error")
     
     def action_back_to_main(self) -> None:
-        """Return to main view from Floppy Mix."""
+        """Return to main view from Floppy Mix or Lyrics view."""
         try:
             switcher = self.query_one("#view-switcher", ContentSwitcher)
             
             if switcher.current == "floppy-mix-view":
                 floppy_mix_view = self.query_one("#floppy-mix-view", FloppyMixView)
                 floppy_mix_view.cleanup()
-                
-                switcher.current = "main-view"
-                
-                library_view = self.query_one("#library", LibraryView)
-                library_view.focus()
+            elif switcher.current == "lyrics-view":
+                lyrics_view = self.query_one("#lyrics-view", LyricsView)
+                lyrics_view.cleanup()
+            
+            switcher.current = "main-view"
+            
+            library_view = self.query_one("#library", LibraryView)
+            library_view.focus()
         except Exception as e:
             logger.error(f"Error returning to main view: {e}")
     

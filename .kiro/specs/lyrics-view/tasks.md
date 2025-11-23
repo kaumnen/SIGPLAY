@@ -122,7 +122,7 @@
   - **Property 14: Paused playback preserves highlight**
   - **Validates: Requirements 5.4**
 
-- [ ] 10. Add lyrics view styling to app.tcss
+- [x] 10. Add lyrics view styling to app.tcss
   - Add styles for `#lyrics-container` with horizontal layout
   - Add styles for `#lyrics-library-panel` with fixed width and border
   - Add styles for `#lyrics-display-panel` with flexible width
@@ -133,7 +133,7 @@
   - Add styles for `#lyrics-loading` and `#lyrics-status`
   - _Requirements: 8.4, 10.2, 10.3, 10.4_
 
-- [ ] 11. Integrate lyrics view with main app
+- [x] 11. Integrate lyrics view with main app
   - Import `LyricsView` and `LyricsService` in `main.py`
   - Instantiate `LyricsService` in `SigplayApp.__init__`
   - Add `LyricsView` to ContentSwitcher with id `lyrics-view`
