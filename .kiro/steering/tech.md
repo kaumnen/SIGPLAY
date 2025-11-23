@@ -6,7 +6,7 @@ inclusion: always
 
 ## Core Technologies
 
-- **Python**: 3.14+ (specified in `.python-version`)
+- **Python**: 3.13+ (specified in pyproject.toml)
 - **Framework**: Textual 6.5.0+ - TUI framework for terminal applications
 - **Package Manager**: `uv` - see uv-steering.md for dependency management rules
 - **Audio**: miniaudio for playback (MP3, WAV, OGG, FLAC support)
@@ -27,9 +27,6 @@ pedalboard>=0.9.19              # Audio effects and mixing (Floppy Mix feature)
 strands-agents[openai]>=1.17.0  # AI agent framework with OpenAI support
 strands-agents-tools>=0.2.16    # Additional tools for agents
 strands-agents-builder>=0.1.10  # Agent builder utilities
-soundfile>=0.13.1               # Audio file I/O for Pedalboard
-librosa>=0.11.0                 # Audio analysis library
-hypothesis>=6.148.2             # Property-based testing
 ```
 
 ## Running & Testing
