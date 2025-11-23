@@ -56,7 +56,7 @@ class DJAgentClient:
         tracks: list[Track],
         instructions: str,
         progress_callback: Callable[[str], None] | None = None
-    ) -> str:
+    ) -> tuple[str, dict]:
         """
         Invoke DJ agent to create a mix.
         
@@ -66,7 +66,7 @@ class DJAgentClient:
             progress_callback: Function to call with status updates
             
         Returns:
-            Path to the generated mix file
+            Tuple of (mix_file_path, statistics_dict)
             
         Raises:
             AgentError: If agent fails to start or execute
@@ -125,12 +125,12 @@ class DJAgentClient:
             
             logger.info(f"Agent process started with PID {agent_process.pid}")
             
-            mix_file_path = await self._monitor_agent_progress(
+            mix_file_path, statistics = await self._monitor_agent_progress(
                 agent_process,
                 progress_callback
             )
             
-            return mix_file_path
+            return mix_file_path, statistics
             
         except asyncio.TimeoutError:
             logger.error("Agent execution timed out")
@@ -193,7 +193,7 @@ class DJAgentClient:
         self,
         agent_process: asyncio.subprocess.Process,
         progress_callback: Callable[[str], None] | None
-    ) -> str:
+    ) -> tuple[str, dict]:
         """
         Monitor agent execution and stream progress updates.
         
@@ -202,7 +202,7 @@ class DJAgentClient:
             progress_callback: Function to call with status updates
             
         Returns:
-            Path to the generated mix file
+            Tuple of (mix_file_path, statistics_dict)
             
         Raises:
             AgentTimeout: If agent exceeds timeout
@@ -322,8 +322,11 @@ class DJAgentClient:
                 logger.error(f"Mix file not found: {mix_file_path}")
                 raise MixingError(f"Mix file was not created: {mix_file_path}")
             
+            statistics = response.get('statistics', {})
+            
             logger.info(f"Mix created successfully: {mix_file_path}")
-            return mix_file_path
+            logger.info(f"Statistics: {statistics}")
+            return mix_file_path, statistics
             
         except asyncio.TimeoutError:
             stderr_task.cancel()

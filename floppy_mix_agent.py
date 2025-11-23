@@ -55,6 +55,8 @@ def load_audio_track(track_path: str, track_id: str) -> str:
         Success message with track info (duration, sample rate, channels)
     """
     try:
+        track_name = Path(track_path).stem
+        print(f"STATUS: 📂 Loading {track_name}...", file=sys.stderr, flush=True)
         logger.info(f"Loading track: {track_path} as {track_id}")
         
         with AudioFile(track_path) as f:
@@ -71,6 +73,7 @@ def load_audio_track(track_path: str, track_id: str) -> str:
         channels = audio.shape[0]
         
         logger.info(f"Loaded {track_id}: {duration:.1f}s, {sample_rate}Hz, {channels}ch")
+        print(f"STATUS: ✓ Loaded {track_name} ({duration:.1f}s)", file=sys.stderr, flush=True)
         return f"✓ Loaded {track_id}: {duration:.1f}s, {sample_rate}Hz, {channels} channels"
         
     except Exception as e:
@@ -183,6 +186,7 @@ def apply_effects(
             applied.append(f"gain {gain_db:+.1f}dB")
         
         if effects:
+            print(f"STATUS: 🎛️ Applying effects to {track_id}: {', '.join(applied)}", file=sys.stderr, flush=True)
             board = Pedalboard(effects)
             processed_audio = board(audio, sample_rate)
             track_data['audio'] = processed_audio
@@ -456,6 +460,7 @@ def add_track_to_mix(
         
         duration = audio.shape[1] / sample_rate
         logger.info(f"Added {track_id} to mix: {duration:.1f}s, crossfade={crossfade_duration}s")
+        print(f"STATUS: ➕ Added {track_id} to mix ({duration:.1f}s, {crossfade_duration}s crossfade)", file=sys.stderr, flush=True)
         return f"✓ Added {track_id} to mix: {duration:.1f}s (crossfade: {crossfade_duration}s)"
         
     except Exception as e:
@@ -479,6 +484,7 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
             return "✗ Error: No tracks added to mix. Use add_track_to_mix first."
         
         logger.info(f"Rendering final mix with {len(_mix_segments)} segments")
+        print(f"STATUS: 🎚️ Rendering final mix ({len(_mix_segments)} segments)...", file=sys.stderr, flush=True)
         
         final_audio = None
         sample_rate = _mix_segments[0]['sample_rate']
@@ -515,6 +521,7 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
                     final_audio = np.concatenate([final_audio, audio], axis=1)
         
         if normalize:
+            print("STATUS: 🔊 Normalizing audio levels...", file=sys.stderr, flush=True)
             max_val = np.max(np.abs(final_audio))
             if max_val > 0:
                 final_audio = final_audio / max_val * 0.95
@@ -522,6 +529,7 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
+        print("STATUS: 💾 Writing audio file...", file=sys.stderr, flush=True)
         sf.write(str(output_file), final_audio.T, sample_rate)
         
         duration = final_audio.shape[1] / sample_rate
@@ -667,7 +675,7 @@ def create_dj_agent() -> Agent:
     return agent
 
 
-def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -> str:
+def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -> dict:
     """
     Process a mixing request using the DJ agent.
     
@@ -677,7 +685,7 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
         output_dir: Directory where the mix file should be saved
         
     Returns:
-        Path to generated mix file
+        Dictionary with mix_file_path and statistics
         
     Raises:
         Exception: If mixing fails
@@ -686,7 +694,10 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
     _audio_cache = {}
     _mix_segments = []
     
-    print("STATUS: Analyzing mixing instructions...", file=sys.stderr, flush=True)
+    import time
+    start_time = time.time()
+    
+    print("STATUS: 🎯 Analyzing mixing instructions...", file=sys.stderr, flush=True)
     logger.info("Starting mix request processing")
     
     if not tracks:
@@ -704,6 +715,7 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
             logger.error(f"Track file not found: {track['path']}")
             raise FileNotFoundError(f"Track file not found: {track['path']}")
     
+    print("STATUS: 🤖 Initializing AI DJ agent...", file=sys.stderr, flush=True)
     logger.info("Creating DJ agent")
     agent = create_dj_agent()
     
@@ -711,12 +723,14 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
     output_path = Path(output_dir) / f"floppy_mix_{timestamp}.wav"
     logger.info(f"Output path: {output_path}")
     
+    print(f"STATUS: 📋 Planning mix strategy for {len(tracks)} track(s)...", file=sys.stderr, flush=True)
+    
     track_list = "\n".join([
         f"  {i+1}. {track['title']} by {track.get('artist', 'Unknown')} - {track['path']}"
         for i, track in enumerate(tracks)
     ])
     
-    prompt = f"""Create a DJ mix with these {len(tracks)} track(s):
+    prompt = f"""Create a DJ mix with these {len(tracks)} track(s) IN THE EXACT ORDER LISTED:
 
 {track_list}
 
@@ -724,10 +738,15 @@ User instructions: {instructions}
 
 Output file: {output_path}
 
+IMPORTANT: You MUST add tracks to the mix in the EXACT order they are listed above (1, 2, 3, etc.).
+The user selected these tracks in this specific order, so respect that order in the final mix.
+
 Use the available tools to:
 1. Load each track with load_audio_track(path, 'track_1'), load_audio_track(path, 'track_2'), etc.
 2. Apply effects based on the user's instructions using the various effect tools
-3. Add each track to the mix with add_track_to_mix() (use 2-6 second crossfades)
+3. Add tracks to the mix IN ORDER with add_track_to_mix():
+   - First track (track_1): crossfade_duration=0
+   - Subsequent tracks: crossfade_duration=2-6 seconds
 4. Render the final mix with render_final_mix('{output_path}', normalize=True)
 
 Interpret the user's instructions and apply appropriate effects. If they mention:
@@ -751,7 +770,7 @@ Be creative and use the full range of tools to create an engaging mix that match
 Start by loading all tracks, then apply effects, then add them to the mix, and finally render.
 """
     
-    print("STATUS: Processing tracks...", file=sys.stderr, flush=True)
+    print("STATUS: 🎵 Agent is processing tracks and applying effects...", file=sys.stderr, flush=True)
     logger.info("Invoking agent to process tracks")
     
     try:
@@ -767,8 +786,13 @@ Start by loading all tracks, then apply effects, then add them to the mix, and f
             logger.info(f"Agent conversational output: {captured_output[:200]}...")
         
         logger.info(f"Agent execution completed with result: {agent_result}")
+        logger.info(f"Agent result type: {type(agent_result)}")
+        if hasattr(agent_result, 'metrics'):
+            logger.info(f"Agent metrics: {agent_result.metrics}")
+        if hasattr(agent_result, 'message'):
+            logger.info(f"Agent message type: {type(agent_result.message)}")
         
-        print("STATUS: Finalizing mix...", file=sys.stderr, flush=True)
+        print("STATUS: 🎚️ Finalizing mix and rendering audio...", file=sys.stderr, flush=True)
         
         if output_path.exists():
             file_size = output_path.stat().st_size
@@ -778,8 +802,50 @@ Start by loading all tracks, then apply effects, then add them to the mix, and f
                 logger.error(f"Mix file too small: {file_size} bytes")
                 raise Exception(f"Generated mix file is too small ({file_size} bytes), likely invalid")
             
-            print(f"STATUS: Mix created successfully: {output_path} ({file_size} bytes)", file=sys.stderr, flush=True)
-            return str(output_path)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            
+            tool_calls = 0
+            total_tokens = 0
+            
+            try:
+                if hasattr(agent_result, 'metrics') and agent_result.metrics:
+                    metrics = agent_result.metrics
+                    
+                    if hasattr(metrics, 'tool_metrics') and metrics.tool_metrics:
+                        for tool_name, tool_metric in metrics.tool_metrics.items():
+                            if hasattr(tool_metric, 'call_count'):
+                                tool_calls += tool_metric.call_count
+                    
+                    if hasattr(metrics, 'accumulated_usage') and metrics.accumulated_usage:
+                        usage = metrics.accumulated_usage
+                        if isinstance(usage, dict):
+                            total_tokens = usage.get('totalTokens', 0)
+                            if not total_tokens:
+                                total_tokens = usage.get('inputTokens', 0) + usage.get('outputTokens', 0)
+                        elif hasattr(usage, 'totalTokens'):
+                            total_tokens = usage.totalTokens
+                        elif hasattr(usage, 'inputTokens') and hasattr(usage, 'outputTokens'):
+                            total_tokens = usage.inputTokens + usage.outputTokens
+                
+                logger.info(f"Extracted stats: tool_calls={tool_calls}, tokens={total_tokens}")
+            except Exception as e:
+                logger.exception(f"Could not extract usage stats: {e}")
+            
+            stats = {
+                'time_seconds': round(elapsed_time, 2),
+                'file_size_mb': round(file_size / 1024 / 1024, 2),
+                'num_tracks': len(tracks),
+                'tool_calls': tool_calls,
+                'tokens_used': total_tokens
+            }
+            
+            print(f"STATUS: ✅ Mix complete! {elapsed_time:.1f}s, {tool_calls} tool calls", file=sys.stderr, flush=True)
+            
+            return {
+                'mix_file_path': str(output_path),
+                'statistics': stats
+            }
         else:
             logger.error(f"Mix file not created at: {output_path}")
             logger.error(f"Agent result was: {agent_result}")
@@ -823,14 +889,15 @@ def main():
         
         logger.info(f"Processing mix request: {len(tracks)} tracks, instructions: {instructions[:100]}...")
         
-        mix_file_path = handle_mix_request(tracks, instructions, output_dir)
+        result = handle_mix_request(tracks, instructions, output_dir)
         
         response = {
             'status': 'success',
-            'mix_file_path': mix_file_path
+            'mix_file_path': result['mix_file_path'],
+            'statistics': result['statistics']
         }
         
-        logger.info(f"Mix completed successfully: {mix_file_path}")
+        logger.info(f"Mix completed successfully: {result['mix_file_path']}")
         print(json.dumps(response), flush=True)
         
     except FileNotFoundError as e:

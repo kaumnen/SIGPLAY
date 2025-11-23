@@ -26,6 +26,7 @@ class TrackSelectionPanel(Container):
         self.tracks = tracks
         self._track_items: dict[int, Track] = {}
         self._selected_indices: set[int] = set()
+        self._selection_order: list[int] = []
         self._cursor_index: int = 0
     
     def compose(self) -> ComposeResult:
@@ -145,12 +146,14 @@ class TrackSelectionPanel(Container):
             
             if idx in self._selected_indices:
                 self._selected_indices.remove(idx)
+                self._selection_order.remove(idx)
                 logger.debug(f"Deselected track: {track.title}")
             else:
                 self._selected_indices.add(idx)
-                logger.debug(f"Selected track: {track.title}")
+                self._selection_order.append(idx)
+                logger.debug(f"Selected track: {track.title} (order: {len(self._selection_order)})")
             
-            self.selected_tracks = [self._track_items[i] for i in sorted(self._selected_indices)]
+            self.selected_tracks = [self._track_items[i] for i in self._selection_order]
             self._update_visual_indicators()
             
         except Exception as e:
@@ -202,6 +205,7 @@ class TrackSelectionPanel(Container):
     def clear_selection(self) -> None:
         """Clear all track selections."""
         self._selected_indices.clear()
+        self._selection_order.clear()
         self.selected_tracks = []
         self._update_visual_indicators()
         logger.debug("Cleared all track selections")
@@ -212,6 +216,7 @@ class TrackSelectionPanel(Container):
         self.tracks = tracks
         self._track_items = {}
         self._selected_indices = set()
+        self._selection_order = []
         self._cursor_index = 0
         self.selected_tracks = []
         self._populate_tracks()

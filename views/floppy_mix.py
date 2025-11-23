@@ -28,11 +28,13 @@ class FloppyMixView(Container):
         self.audio_player = audio_player
         self.music_library = music_library
         self._mix_file_path: str | None = None
+        self._mix_statistics: dict | None = None
         
         self._track_panel: TrackSelectionPanel | None = None
         self._instructions_panel: InstructionsPanel | None = None
         self._loading_indicator: LoadingIndicator | None = None
         self._status_display: Static | None = None
+        self._statistics_display: Static | None = None
         self._controls_container: Horizontal | None = None
     
     def compose(self) -> ComposeResult:
@@ -45,6 +47,7 @@ class FloppyMixView(Container):
                 with Horizontal(id="floppy-mix-status-row"):
                     yield LoadingIndicator(id="progress-spinner")
                     yield Static("Select tracks (Space), add instructions (Tab to switch), then select Start Mix.", id="status-display")
+                yield Static("", id="statistics-display")
                 with Horizontal(id="floppy-mix-controls-row"):
                     yield Button("💾 Save Mix", id="save-button", variant="success")
                     yield Button("🗑️  Discard Mix", id="discard-button", variant="error")
@@ -60,9 +63,11 @@ class FloppyMixView(Container):
             self._instructions_panel = self.query_one("#instructions-panel", InstructionsPanel)
             self._loading_indicator = self.query_one("#progress-spinner", LoadingIndicator)
             self._status_display = self.query_one("#status-display", Static)
+            self._statistics_display = self.query_one("#statistics-display", Static)
             self._controls_container = self.query_one("#floppy-mix-controls-row", Horizontal)
             
             self._loading_indicator.display = False
+            self._statistics_display.display = False
             self._controls_container.display = False
             
             logger.debug("Floppy Mix view panels mounted successfully")
@@ -102,10 +107,12 @@ class FloppyMixView(Container):
         
         self.mixing_state = "idle"
         self._mix_file_path = None
+        self._mix_statistics = None
         
         if self._track_panel:
             self._track_panel.clear_selection()
         self._hide_preview_controls()
+        self._hide_statistics()
         self._update_status("Ready to mix")
     
     def _stop_preview_playback(self) -> None:
@@ -181,13 +188,13 @@ class FloppyMixView(Container):
                 """Update status display with agent status."""
                 self._update_status(status)
             
-            mix_file_path = await client.create_mix(
+            mix_file_path, statistics = await client.create_mix(
                 tracks=selected_tracks,
                 instructions=instructions,
                 progress_callback=progress_update
             )
             
-            self.on_mix_complete(mix_file_path)
+            self.on_mix_complete(mix_file_path, statistics)
             
         except Exception as e:
             logger.exception(f"Mix failed: {e}")
@@ -213,14 +220,17 @@ class FloppyMixView(Container):
         logger.debug(f"Validation passed: {len(selected_tracks)} tracks, {len(instructions)} chars")
         return None
         
-    def on_mix_complete(self, mix_file_path: str) -> None:
+    def on_mix_complete(self, mix_file_path: str, statistics: dict) -> None:
         """Handle successful mix completion."""
         logger.info(f"Mix completed successfully: {mix_file_path}")
+        logger.info(f"Statistics: {statistics}")
         self._mix_file_path = mix_file_path
+        self._mix_statistics = statistics
         self.mixing_state = "previewing"
         
         self._hide_loading()
         self._update_status("✓ Mix complete! Playing preview...")
+        self._show_statistics(statistics)
         self._show_preview_controls()
         
         self._start_preview_playback()
@@ -367,6 +377,7 @@ class FloppyMixView(Container):
             self._delete_temp_mix_file()
             
             self._mix_file_path = None
+            self._mix_statistics = None
             self.mixing_state = "idle"
             
             if self._track_panel:
@@ -374,6 +385,7 @@ class FloppyMixView(Container):
             if self._instructions_panel:
                 self._instructions_panel.clear()
             self._hide_preview_controls()
+            self._hide_statistics()
             
             self.app.run_worker(self._refresh_library_after_save, exclusive=False)
             
@@ -463,12 +475,14 @@ class FloppyMixView(Container):
         
         self.mixing_state = "idle"
         self._mix_file_path = None
+        self._mix_statistics = None
         
         if self._track_panel:
             self._track_panel.clear_selection()
         if self._instructions_panel:
             self._instructions_panel.clear()
         self._hide_preview_controls()
+        self._hide_statistics()
         self._update_status("Ready to mix")
         
         self.app.notify("Mix discarded", severity="information")
@@ -479,6 +493,27 @@ class FloppyMixView(Container):
         if self._status_display:
             self._status_display.update(message)
         logger.debug(f"Status updated: {message}")
+    
+    def _show_statistics(self, stats: dict) -> None:
+        """Display mix statistics."""
+        if not self._statistics_display:
+            return
+        
+        time_str = f"{stats.get('time_seconds', 0):.1f}s"
+        tokens_str = f"{stats.get('tokens_used', 0):,}" if stats.get('tokens_used', 0) > 0 else "N/A"
+        tool_calls_str = str(stats.get('tool_calls', 0))
+        file_size_str = f"{stats.get('file_size_mb', 0):.1f}MB"
+        
+        stats_text = (
+            f"⏱️  Time: {time_str}  |  "
+            f"🔧 Tool Calls: {tool_calls_str}  |  "
+            f"🪙 Tokens: {tokens_str}  |  "
+            f"💾 Size: {file_size_str}"
+        )
+        
+        self._statistics_display.update(stats_text)
+        self._statistics_display.display = True
+        logger.debug(f"Statistics displayed: {stats}")
     
     def _show_preview_controls(self) -> None:
         """Display save/discard buttons."""
@@ -493,6 +528,12 @@ class FloppyMixView(Container):
         if self._controls_container:
             self._controls_container.display = False
         logger.debug("Hiding preview controls")
+    
+    def _hide_statistics(self) -> None:
+        """Hide statistics display."""
+        if self._statistics_display:
+            self._statistics_display.display = False
+            self._statistics_display.update("")
     
     def _show_loading(self) -> None:
         """Show loading indicator."""
