@@ -192,6 +192,12 @@ class LyricsView(Container):
         self.lyrics = []
         self.active_segment_index = -1
         
+        content = self.query_one("#lyrics-content", Container)
+        try:
+            content.remove_children()
+        except Exception as e:
+            logger.error(f"Error clearing lyrics content: {e}")
+        
         loading_indicator = self.query_one("#lyrics-loading", LoadingIndicator)
         status_label = self.query_one("#lyrics-status", Static)
         
@@ -200,8 +206,8 @@ class LyricsView(Container):
         
         try:
             def progress_callback(message: str) -> None:
-                """Update status label from background thread."""
-                self.app.call_from_thread(status_label.update, message)
+                """Update status label."""
+                status_label.update(message)
             
             self._pending_transcription_task = asyncio.create_task(
                 self._lyrics_service.get_lyrics(
@@ -268,7 +274,11 @@ class LyricsView(Container):
     def _render_lyrics(self) -> None:
         """Render lyrics segments to the display."""
         content = self.query_one("#lyrics-content", Container)
-        content.remove_children()
+        
+        try:
+            content.remove_children()
+        except Exception as e:
+            logger.error(f"Error removing children: {e}")
         
         if not self.lyrics:
             content.mount(Static("Select a track to view lyrics", classes="lyrics-empty"))
