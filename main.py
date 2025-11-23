@@ -11,11 +11,10 @@ from pathlib import Path
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 
-from widgets import Header, HelpScreen, WhisperModelScreen, ModelDownloadScreen
-from views import LibraryView, NowPlayingView, MetersView, FloppyMixView, LyricsView
+from widgets import Header, HelpScreen
+from views import LibraryView, NowPlayingView, MetersView, FloppyMixView
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
-from services.lyrics_service import LyricsService
 
 
 class MainViewContainer(Vertical):
@@ -67,7 +66,6 @@ class SigplayApp(App):
         Binding("-", "volume_down", "Vol-", priority=True),
         Binding("m", "toggle_mute", "Mute", priority=True),
         Binding("f", "show_floppy_mix", "Floppy Mix Page", priority=True),
-        Binding("l", "show_lyrics", "Lyrics", priority=True),
         Binding("d", "back_to_main", "Default Page", priority=True),
         Binding("h", "show_help", "Help", priority=True),
         Binding("?", "show_help", "Help", show=False, priority=True),
@@ -85,7 +83,6 @@ class SigplayApp(App):
             raise
         
         self.music_library = MusicLibrary()
-        self.lyrics_service = LyricsService()
         self._session_openrouter_key: str | None = None
         logger.info("Services initialized successfully")
     
@@ -96,7 +93,6 @@ class SigplayApp(App):
         with ContentSwitcher(id="view-switcher", initial="main-view"):
             yield MainViewContainer(self.music_library, self.audio_player, id="main-view")
             yield FloppyMixView(self.audio_player, self.music_library, id="floppy-mix-view")
-            yield LyricsView(self.music_library, self.audio_player, self.lyrics_service, id="lyrics-view")
         
         yield Footer()
     
@@ -322,25 +318,7 @@ class SigplayApp(App):
             logger.error(f"Error showing Floppy Mix view: {e}")
             self.notify("❌ Cannot open Floppy Mix view", severity="error")
     
-    def action_show_lyrics(self) -> None:
-        """Show the Lyrics view."""
-        try:
-            downloaded_models = self.lyrics_service.get_downloaded_models()
-            
-            if not downloaded_models:
-                self.push_screen(
-                    WhisperModelScreen(
-                        downloaded_models,
-                        self.lyrics_service.AVAILABLE_MODELS,
-                        self.lyrics_service.get_device_info()
-                    ),
-                    callback=self._handle_model_selection
-                )
-            else:
-                self._show_lyrics_view()
-        except Exception as e:
-            logger.error(f"Error showing Lyrics view: {e}")
-            self.notify("❌ Cannot open Lyrics view", severity="error")
+
     
     def _check_openrouter_credentials(self) -> bool:
         """Check if OpenRouter credentials are available.
@@ -386,104 +364,16 @@ class SigplayApp(App):
             logger.error(f"Error showing Floppy Mix view: {e}")
             self.notify("❌ Cannot open Floppy Mix view", severity="error")
     
-    def _handle_model_selection(self, model_name: str | None) -> None:
-        """Handle Whisper model selection.
-        
-        Args:
-            model_name: Selected model name, or None if cancelled.
-        """
-        if not model_name:
-            logger.debug("Model selection cancelled by user")
-            self.notify("Lyrics view requires a Whisper model", severity="information")
-            return
-        
-        self.lyrics_service.set_model(model_name)
-        logger.info(f"Selected Whisper model: {model_name}")
-        
-        downloaded_models = self.lyrics_service.get_downloaded_models()
-        if model_name in downloaded_models:
-            self.notify(f"✓ Using {model_name} model", severity="information", timeout=2)
-            self._show_lyrics_view()
-        else:
-            model_desc = next(
-                (desc for name, desc in self.lyrics_service.AVAILABLE_MODELS if name == model_name),
-                model_name
-            )
-            self.push_screen(
-                ModelDownloadScreen(model_name, model_desc),
-                callback=self._handle_download_complete
-            )
-            self.run_worker(self._download_model_worker(model_name), exclusive=False)
-    
-    async def _download_model_worker(self, model_name: str) -> None:
-        """Download model in background worker.
-        
-        Args:
-            model_name: Name of the model to download.
-        """
-        try:
-            download_screen = self.screen_stack[-1]
-            if not isinstance(download_screen, ModelDownloadScreen):
-                logger.error("Download screen not found")
-                return
-            
-            def progress_callback(message: str) -> None:
-                """Update download screen from background thread."""
-                download_screen.update_progress(message)
-            
-            success = await self.lyrics_service.download_model(
-                model_name, progress_callback=progress_callback
-            )
-            
-            if not success:
-                self.notify(
-                    "❌ Failed to download model. Check your internet connection.",
-                    severity="error",
-                    timeout=5
-                )
-        except Exception as e:
-            logger.error(f"Error downloading model: {e}", exc_info=True)
-            self.notify(
-                f"❌ Download error: {str(e)[:50]}",
-                severity="error",
-                timeout=5
-            )
-    
-    def _handle_download_complete(self, success: bool) -> None:
-        """Handle download completion.
-        
-        Args:
-            success: True if download completed successfully.
-        """
-        if success:
-            self.notify("✓ Model ready", severity="information", timeout=2)
-            self._show_lyrics_view()
-        else:
-            self.notify("Download cancelled", severity="information", timeout=2)
-    
-    def _show_lyrics_view(self) -> None:
-        """Show the Lyrics view after model is selected."""
-        try:
-            switcher = self.query_one("#view-switcher", ContentSwitcher)
-            switcher.current = "lyrics-view"
-            
-            lyrics_view = self.query_one("#lyrics-view", LyricsView)
-            lyrics_view.on_show()
-        except Exception as e:
-            logger.error(f"Error showing Lyrics view: {e}")
-            self.notify("❌ Cannot open Lyrics view", severity="error")
+
     
     def action_back_to_main(self) -> None:
-        """Return to main view from Floppy Mix or Lyrics view."""
+        """Return to main view from Floppy Mix view."""
         try:
             switcher = self.query_one("#view-switcher", ContentSwitcher)
             
             if switcher.current == "floppy-mix-view":
                 floppy_mix_view = self.query_one("#floppy-mix-view", FloppyMixView)
                 floppy_mix_view.cleanup()
-            elif switcher.current == "lyrics-view":
-                lyrics_view = self.query_one("#lyrics-view", LyricsView)
-                lyrics_view.cleanup()
             
             switcher.current = "main-view"
             
@@ -499,8 +389,6 @@ class SigplayApp(App):
             
             if switcher.current == "floppy-mix-view":
                 view_type = "floppy_mix"
-            elif switcher.current == "lyrics-view":
-                view_type = "lyrics"
             else:
                 view_type = "main"
             

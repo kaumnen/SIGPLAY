@@ -44,7 +44,7 @@ class HelpScreen(ModalScreen[None]):
         """Initialize help screen.
         
         Args:
-            view_type: Either "main", "floppy_mix", or "lyrics" to show appropriate help.
+            view_type: Either "main" or "floppy_mix" to show appropriate help.
         """
         super().__init__()
         self.view_type = view_type
@@ -55,10 +55,8 @@ class HelpScreen(ModalScreen[None]):
             with VerticalScroll(id="help-scroll"):
                 if self.view_type == "main":
                     yield self._compose_main_help()
-                elif self.view_type == "floppy_mix":
-                    yield self._compose_floppy_mix_help()
                 else:
-                    yield self._compose_lyrics_help()
+                    yield self._compose_floppy_mix_help()
             
             yield Button("Close (Esc)", id="help-close-button", variant="primary")
     
@@ -83,7 +81,6 @@ class HelpScreen(ModalScreen[None]):
   
 [bold]FEATURES[/bold]
   f           Open Floppy Mix (AI DJ mixing)
-  l           Open Lyrics View
   d           Return to Default View (Library)
   o           Select audio device (coming soon)
   h/?         Show this help
@@ -139,51 +136,6 @@ crossfades, and mixing techniques automatically.
         
         return Static(help_text, id="help-content")
     
-    def _compose_lyrics_help(self) -> Static:
-        """Compose help content for Lyrics view."""
-        help_text = """[bold #ff8c00]📝 LYRICS VIEW - Synchronized Lyrics[/bold #ff8c00]
-
-[bold]WHAT IS LYRICS VIEW?[/bold]
-View automatically generated, timestamped lyrics that sync with
-your music playback. Lyrics are transcribed using AI and cached
-for instant loading on subsequent plays.
-
-[bold]HOW TO USE[/bold]
-  1. Press 'l' to open Lyrics View
-  2. Navigate track library using j/k keys
-  3. Press Enter to select a track
-  4. Lyrics will generate automatically (first time only)
-  5. Watch lyrics highlight in sync with playback
-  6. Press 'd' or Escape to return to main view
-
-[bold]FEATURES[/bold]
-  • Automatic transcription using Whisper AI
-  • Word-level timestamp synchronization
-  • Auto-scroll to keep active lyrics visible
-  • Persistent cache (no re-transcription needed)
-  • Works offline after initial model download
-  • Supports multiple languages
-
-[bold]KEYBINDINGS[/bold]
-  j/k         Navigate track library
-  Enter       Select track and load lyrics
-  d/Escape    Return to main view
-  Space       Play/Pause playback
-  h/?         Show this help
-
-[bold]FIRST USE[/bold]
-  • First transcription downloads Whisper model (~1.5 GB)
-  • Transcription takes 30-60 seconds per 3-minute song
-  • Subsequent plays load instantly from cache
-  • Cache stored in ~/.local/share/sigplay/lyrics_cache/
-
-[bold]TIPS[/bold]
-  • Lyrics work best with clear vocals
-  • Instrumental tracks may produce empty results
-  • Background noise can affect accuracy
-  • Cached lyrics persist across sessions"""
-        
-        return Static(help_text, id="help-content")
     
     def on_mount(self) -> None:
         """Focus the button when screen mounts."""
