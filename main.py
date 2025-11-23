@@ -398,7 +398,14 @@ class SigplayApp(App):
         """Show help screen based on current view."""
         try:
             switcher = self.query_one("#view-switcher", ContentSwitcher)
-            view_type = "floppy_mix" if switcher.current == "floppy-mix-view" else "main"
+            
+            if switcher.current == "floppy-mix-view":
+                view_type = "floppy_mix"
+            elif switcher.current == "lyrics-view":
+                view_type = "lyrics"
+            else:
+                view_type = "main"
+            
             self.push_screen(HelpScreen(view_type=view_type))
         except Exception as e:
             logger.error(f"Error showing help screen: {e}")

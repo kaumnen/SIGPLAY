@@ -142,7 +142,7 @@
   - Pass `MusicLibrary`, `AudioPlayer`, and `LyricsService` to `LyricsView`
   - _Requirements: 1.1, 1.5, 8.5_
 
-- [ ] 12. Add help documentation for lyrics view
+- [x] 12. Add help documentation for lyrics view
   - Update help screen to include lyrics view keybindings
   - Document `l` key to open lyrics view
   - Document `j`/`k` navigation in lyrics track library
