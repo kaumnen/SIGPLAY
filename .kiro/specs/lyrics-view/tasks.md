@@ -107,7 +107,7 @@
   - **Property 2: Auto-scroll keeps active segment visible**
   - **Validates: Requirements 1.4, 5.3**
 
-- [ ] 9. Implement cleanup and state management
+- [x] 9. Implement cleanup and state management
   - Implement `cleanup()` method to stop update timer
   - Implement track switching to cancel pending transcription
   - Handle playback stop to reset active segment

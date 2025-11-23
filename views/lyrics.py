@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
@@ -9,6 +10,7 @@ from textual.timer import Timer
 
 from models.track import Track
 from models.lyrics import LyricSegment
+from models.playback import PlaybackState
 from services.audio_player import AudioPlayer
 from services.music_library import MusicLibrary
 from services.lyrics_service import LyricsService
@@ -44,6 +46,8 @@ class LyricsView(Container):
         self._audio_player = audio_player
         self._lyrics_service = lyrics_service
         self._update_timer: Timer | None = None
+        self._pending_transcription_task = None
+        self._last_playback_state = None
     
     def compose(self) -> ComposeResult:
         """Compose the lyrics view layout."""
@@ -63,6 +67,7 @@ class LyricsView(Container):
         """Initialize view on mount."""
         self._refresh_track_list()
         self._update_timer = self.set_interval(0.5, self._update_active_segment)
+        self._last_playback_state = self._audio_player.get_state()
         loading_indicator = self.query_one("#lyrics-loading", LoadingIndicator)
         loading_indicator.display = False
     
@@ -94,6 +99,15 @@ class LyricsView(Container):
         """Handle track selection."""
         if hasattr(event.item, 'track'):
             track = event.item.track
+            
+            if self._pending_transcription_task and not self._pending_transcription_task.done():
+                logger.info("Cancelling pending transcription due to track switch")
+                self._pending_transcription_task.cancel()
+                try:
+                    await self._pending_transcription_task
+                except asyncio.CancelledError:
+                    logger.debug("Transcription cancelled successfully")
+            
             self.current_track = track
             
             self._audio_player.play(track)
@@ -121,14 +135,22 @@ class LyricsView(Container):
                 """Update status label from background thread."""
                 self.call_from_thread(status_label.update, message)
             
-            lyrics = await self._lyrics_service.get_lyrics(
-                track.file_path,
-                progress_callback=progress_callback
+            self._pending_transcription_task = asyncio.create_task(
+                self._lyrics_service.get_lyrics(
+                    track.file_path,
+                    progress_callback=progress_callback
+                )
             )
+            
+            lyrics = await self._pending_transcription_task
             
             self.lyrics = lyrics
             self._render_lyrics()
             
+        except asyncio.CancelledError:
+            logger.info("Lyrics loading cancelled")
+            status_label.update("")
+            raise
         except FileNotFoundError as e:
             logger.error(f"Audio file not found: {e}")
             status_label.update("Error: Audio file not found")
@@ -173,6 +195,7 @@ class LyricsView(Container):
             self.is_loading = False
             loading_indicator.display = False
             status_label.update("")
+            self._pending_transcription_task = None
     
     def _render_lyrics(self) -> None:
         """Render lyrics segments to the display."""
@@ -195,9 +218,29 @@ class LyricsView(Container):
         """Update active segment based on playback position.
         
         Called every 0.5 seconds to check playback position and update
-        the active segment highlight.
+        the active segment highlight. Handles playback state changes:
+        - STOPPED: Reset active segment to beginning
+        - PAUSED: Maintain current highlight
+        - PLAYING: Update based on position
         """
-        if not self.lyrics or not self._audio_player.is_playing():
+        if not self.lyrics:
+            return
+        
+        current_state = self._audio_player.get_state()
+        
+        if current_state == PlaybackState.STOPPED:
+            if self._last_playback_state != PlaybackState.STOPPED:
+                logger.debug("Playback stopped, resetting active segment")
+                self.active_segment_index = -1
+                self._highlight_active_segment()
+            self._last_playback_state = current_state
+            return
+        
+        if current_state == PlaybackState.PAUSED:
+            self._last_playback_state = current_state
+            return
+        
+        if not self._audio_player.is_playing():
             return
         
         position = self._audio_player.get_position()
@@ -211,6 +254,8 @@ class LyricsView(Container):
         if new_index != self.active_segment_index:
             self.active_segment_index = new_index
             self._highlight_active_segment()
+        
+        self._last_playback_state = current_state
     
     def _highlight_active_segment(self) -> None:
         """Highlight the active segment and scroll to it.
@@ -235,3 +280,18 @@ class LyricsView(Container):
                     logger.debug(f"Error highlighting segment: {e}")
         except Exception as e:
             logger.error(f"Error in _highlight_active_segment: {e}")
+    
+    def cleanup(self) -> None:
+        """Cleanup when view is hidden or app exits.
+        
+        Stops the update timer and cancels any pending transcription tasks.
+        """
+        logger.info("Cleaning up LyricsView")
+        
+        if self._update_timer:
+            self._update_timer.stop()
+            self._update_timer = None
+        
+        if self._pending_transcription_task and not self._pending_transcription_task.done():
+            logger.info("Cancelling pending transcription during cleanup")
+            self._pending_transcription_task.cancel()
