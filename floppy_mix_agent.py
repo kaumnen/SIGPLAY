@@ -12,7 +12,6 @@ import os
 import tempfile
 import logging
 import numpy as np
-import soundfile as sf
 from pathlib import Path
 from datetime import datetime
 
@@ -530,7 +529,8 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
         print("STATUS: 💾 Writing audio file...", file=sys.stderr, flush=True)
-        sf.write(str(output_file), final_audio.T, sample_rate)
+        with AudioFile(str(output_file), 'w', sample_rate, final_audio.shape[0]) as f:
+            f.write(final_audio)
         
         duration = final_audio.shape[1] / sample_rate
         file_size = output_file.stat().st_size
