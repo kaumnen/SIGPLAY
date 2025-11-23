@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.reactive import reactive
 from textual.widgets import Static, ListView, ListItem, Label, LoadingIndicator
@@ -20,6 +21,12 @@ logger = logging.getLogger(__name__)
 
 class LyricsView(Container):
     """Full-screen view displaying track library and synchronized lyrics."""
+    
+    BINDINGS = [
+        Binding("j", "move_down", "Move down", show=False),
+        Binding("k", "move_up", "Move up", show=False),
+        Binding("enter", "select_track", "Play"),
+    ]
     
     current_track: reactive[Track | None] = reactive(None)
     lyrics: reactive[list[LyricSegment]] = reactive([])
@@ -54,7 +61,7 @@ class LyricsView(Container):
         with Horizontal(id="lyrics-container"):
             with Container(id="lyrics-library-panel"):
                 yield Static("🎵 Track Library", id="lyrics-library-title")
-                yield ListView(id="lyrics-track-list")
+                yield ListView(id="lyrics-track-list", classes="lyrics-track-list")
             
             with Container(id="lyrics-display-panel"):
                 yield Static("📝 Lyrics", id="lyrics-panel-title")
@@ -76,10 +83,20 @@ class LyricsView(Container):
         self._refresh_track_list()
         if self.current_track:
             self._load_lyrics_for_track(self.current_track)
+        self.call_after_refresh(self._set_initial_focus)
+    
+    def _set_initial_focus(self) -> None:
+        """Set focus to track list after view is fully rendered."""
+        try:
+            track_list = self.query_one("#lyrics-track-list", ListView)
+            track_list.focus()
+        except Exception as e:
+            logger.error(f"Failed to focus track list: {e}")
     
     def _refresh_track_list(self) -> None:
         """Populate track list from music library."""
         track_list = self.query_one("#lyrics-track-list", ListView)
+        current_index = track_list.index
         track_list.clear()
         
         tracks = self._music_library.get_tracks()
@@ -89,11 +106,61 @@ class LyricsView(Container):
             track_list.append(item)
             return
         
+        current_track = self._audio_player.get_current_track()
+        
         for track in tracks:
-            label_text = f"{track.title} - {track.artist or 'Unknown'}"
+            is_playing = (current_track and track.file_path == current_track.file_path)
+            prefix = "♪ " if is_playing else "  "
+            label_text = f"{prefix}{track.title} - {track.artist or 'Unknown'}"
             item = ListItem(Label(label_text))
             item.track = track
             track_list.append(item)
+        
+        if current_index is not None and current_index < len(tracks):
+            track_list.index = current_index
+        elif len(tracks) > 0:
+            track_list.index = 0
+    
+    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        """Update display when selection changes to show arrows on both sides."""
+        tracks = self._music_library.get_tracks()
+        
+        if not tracks or event.list_view.index is None:
+            return
+        
+        current_track = self._audio_player.get_current_track()
+        
+        for i, item in enumerate(event.list_view.children):
+            if not isinstance(item, ListItem):
+                continue
+            
+            track = tracks[i] if i < len(tracks) else None
+            if not track:
+                continue
+            
+            try:
+                label = item.query_one(Label)
+            except Exception as e:
+                logger.debug(f"Could not query label from list item: {e}")
+                continue
+            
+            is_selected = (i == event.list_view.index)
+            is_playing = (current_track and track.file_path == current_track.file_path)
+            
+            if is_playing and is_selected:
+                prefix = "▶ ♪"
+                suffix = " ◀"
+            elif is_playing:
+                prefix = "  ♪"
+                suffix = "  "
+            elif is_selected:
+                prefix = "▶  "
+                suffix = " ◀"
+            else:
+                prefix = "   "
+                suffix = "  "
+            
+            label.update(f"{prefix} {track.title} - {track.artist or 'Unknown'}{suffix}")
     
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle track selection."""
@@ -111,6 +178,7 @@ class LyricsView(Container):
             self.current_track = track
             
             self._audio_player.play(track)
+            self._refresh_track_list()
             
             await self._load_lyrics_for_track(track)
     
@@ -133,7 +201,7 @@ class LyricsView(Container):
         try:
             def progress_callback(message: str) -> None:
                 """Update status label from background thread."""
-                self.call_from_thread(status_label.update, message)
+                self.app.call_from_thread(status_label.update, message)
             
             self._pending_transcription_task = asyncio.create_task(
                 self._lyrics_service.get_lyrics(
@@ -280,6 +348,34 @@ class LyricsView(Container):
                     logger.debug(f"Error highlighting segment: {e}")
         except Exception as e:
             logger.error(f"Error in _highlight_active_segment: {e}")
+    
+    def action_move_down(self) -> None:
+        """Move selection down in the list (j key)."""
+        track_list = self.query_one("#lyrics-track-list", ListView)
+        track_list.action_cursor_down()
+    
+    def action_move_up(self) -> None:
+        """Move selection up in the list (k key)."""
+        track_list = self.query_one("#lyrics-track-list", ListView)
+        track_list.action_cursor_up()
+    
+    def action_select_track(self) -> None:
+        """Play selected track (Enter key)."""
+        track_list = self.query_one("#lyrics-track-list", ListView)
+        if track_list.index is not None:
+            tracks = self._music_library.get_tracks()
+            if track_list.index < len(tracks):
+                track = tracks[track_list.index]
+                
+                if self._pending_transcription_task and not self._pending_transcription_task.done():
+                    logger.info("Cancelling pending transcription due to track switch")
+                    self._pending_transcription_task.cancel()
+                
+                self.current_track = track
+                self._audio_player.play(track)
+                self._refresh_track_list()
+                
+                asyncio.create_task(self._load_lyrics_for_track(track))
     
     def cleanup(self) -> None:
         """Cleanup when view is hidden or app exits.
