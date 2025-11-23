@@ -4,7 +4,8 @@ import logging
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.reactive import reactive
-from textual.widgets import Static, ListView, LoadingIndicator
+from textual.widgets import Static, ListView, ListItem, Label, LoadingIndicator
+from textual.timer import Timer
 
 from models.track import Track
 from models.lyrics import LyricSegment
@@ -42,6 +43,7 @@ class LyricsView(Container):
         self._music_library = music_library
         self._audio_player = audio_player
         self._lyrics_service = lyrics_service
+        self._update_timer: Timer | None = None
     
     def compose(self) -> ComposeResult:
         """Compose the lyrics view layout."""
@@ -56,3 +58,52 @@ class LyricsView(Container):
                 yield Static("", id="lyrics-status")
                 with VerticalScroll(id="lyrics-scroll"):
                     yield Container(id="lyrics-content")
+    
+    def on_mount(self) -> None:
+        """Initialize view on mount."""
+        self._refresh_track_list()
+        self._update_timer = self.set_interval(0.5, self._update_active_segment)
+        loading_indicator = self.query_one("#lyrics-loading", LoadingIndicator)
+        loading_indicator.display = False
+    
+    def on_show(self) -> None:
+        """Called when view becomes visible."""
+        self._refresh_track_list()
+        if self.current_track:
+            self._load_lyrics_for_track(self.current_track)
+    
+    def _refresh_track_list(self) -> None:
+        """Populate track list from music library."""
+        track_list = self.query_one("#lyrics-track-list", ListView)
+        track_list.clear()
+        
+        tracks = self._music_library.get_tracks()
+        
+        if not tracks:
+            item = ListItem(Label("No music files found"))
+            track_list.append(item)
+            return
+        
+        for track in tracks:
+            label_text = f"{track.title} - {track.artist or 'Unknown'}"
+            item = ListItem(Label(label_text))
+            item.track = track
+            track_list.append(item)
+    
+    async def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Handle track selection."""
+        if hasattr(event.item, 'track'):
+            track = event.item.track
+            self.current_track = track
+            
+            self._audio_player.play(track)
+            
+            await self._load_lyrics_for_track(track)
+    
+    async def _load_lyrics_for_track(self, track: Track) -> None:
+        """Load or generate lyrics for the selected track."""
+        pass
+    
+    def _update_active_segment(self) -> None:
+        """Update active segment based on playback position."""
+        pass

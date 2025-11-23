@@ -60,7 +60,7 @@
   - Export `LyricsView` in `views/__init__.py`
   - _Requirements: 1.2, 6.1, 8.2_
 
-- [ ] 6. Implement track library display and navigation
+- [x] 6. Implement track library display and navigation
   - Implement `on_mount()` to call `_refresh_track_list()` and set up update timer
   - Implement `on_show()` to refresh track list and reload lyrics for current track
   - Implement `_refresh_track_list()` to populate ListView with tracks from MusicLibrary
