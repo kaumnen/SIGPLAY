@@ -33,15 +33,22 @@ class LyricsService:
         
         Returns:
             WhisperModel instance configured for CPU inference with int8 quantization.
+            
+        Raises:
+            RuntimeError: If model download or loading fails.
         """
         if self._model is None:
-            logger.info("Loading Whisper large-v3 model...")
-            self._model = WhisperModel(
-                "large-v3",
-                device="cpu",
-                compute_type="int8"
-            )
-            logger.info("Whisper model loaded successfully")
+            try:
+                logger.info("Loading Whisper large-v3 model...")
+                self._model = WhisperModel(
+                    "large-v3",
+                    device="cpu",
+                    compute_type="int8"
+                )
+                logger.info("Whisper model loaded successfully")
+            except Exception as e:
+                logger.error(f"Failed to load Whisper model: {e}", exc_info=True)
+                raise RuntimeError(f"Failed to load Whisper model. Please check your internet connection and try again. Error: {e}")
         return self._model
     
     def _get_cache_key(self, track_path: str) -> str:
@@ -86,53 +93,87 @@ class LyricsService:
             try:
                 data = json.loads(cache_file.read_text())
                 return [LyricSegment(**seg) for seg in data]
+            except json.JSONDecodeError as e:
+                logger.warning(f"Corrupted cache file, will re-transcribe: {e}")
+                try:
+                    cache_file.unlink(missing_ok=True)
+                except Exception as unlink_error:
+                    logger.error(f"Failed to delete corrupted cache file: {unlink_error}", exc_info=True)
             except Exception as e:
-                logger.warning(f"Failed to load cache file, will re-transcribe: {e}")
-                cache_file.unlink(missing_ok=True)
+                logger.error(f"Failed to read cache file, will re-transcribe: {e}", exc_info=True)
+                try:
+                    cache_file.unlink(missing_ok=True)
+                except Exception as unlink_error:
+                    logger.error(f"Failed to delete invalid cache file: {unlink_error}", exc_info=True)
         
         def _transcribe() -> list[LyricSegment]:
-            """Transcribe audio in background thread."""
-            if progress_callback:
-                progress_callback("Loading Whisper model...")
+            """Transcribe audio in background thread.
             
-            model = self._get_model()
-            
-            if progress_callback:
-                progress_callback(f"Generating lyrics for {track_file.name}...")
-            
-            logger.info(f"Transcribing: {track_path}")
-            
-            segments, info = model.transcribe(
-                track_path,
-                word_timestamps=True,
-                beam_size=5
-            )
-            
-            logger.info(f"Detected language: {info.language} (probability: {info.language_probability:.2f})")
-            
-            lyrics = []
-            for segment in segments:
-                lyrics.append(LyricSegment(
-                    start=segment.start,
-                    end=segment.end,
-                    text=segment.text.strip()
-                ))
-            
-            logger.info(f"Transcription complete: {len(lyrics)} segments")
-            
+            Raises:
+                RuntimeError: If model loading or transcription fails.
+            """
             try:
-                cache_data = [
-                    {"start": seg.start, "end": seg.end, "text": seg.text}
-                    for seg in lyrics
-                ]
-                cache_file.write_text(json.dumps(cache_data, indent=2))
-                logger.info(f"Cached lyrics: {cache_key}")
+                if progress_callback:
+                    progress_callback("Loading Whisper model...")
+                
+                model = self._get_model()
+                
+                if progress_callback:
+                    progress_callback(f"Generating lyrics for {track_file.name}...")
+                
+                logger.info(f"Transcribing: {track_path}")
+                
+                segments, info = model.transcribe(
+                    track_path,
+                    word_timestamps=True,
+                    beam_size=5
+                )
+                
+                logger.info(f"Detected language: {info.language} (probability: {info.language_probability:.2f})")
+                
+                lyrics = []
+                for segment in segments:
+                    lyrics.append(LyricSegment(
+                        start=segment.start,
+                        end=segment.end,
+                        text=segment.text.strip()
+                    ))
+                
+                logger.info(f"Transcription complete: {len(lyrics)} segments")
+                
+                try:
+                    cache_data = [
+                        {"start": seg.start, "end": seg.end, "text": seg.text}
+                        for seg in lyrics
+                    ]
+                    cache_file.write_text(json.dumps(cache_data, indent=2))
+                    logger.info(f"Cached lyrics: {cache_key}")
+                except PermissionError as e:
+                    logger.error(f"Permission denied writing cache file: {e}", exc_info=True)
+                except OSError as e:
+                    logger.error(f"Failed to write cache file (disk full or I/O error): {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"Failed to cache lyrics: {e}", exc_info=True)
+                
+                return lyrics
+                
+            except RuntimeError:
+                raise
+            except FileNotFoundError as e:
+                logger.error(f"Audio file not found during transcription: {e}", exc_info=True)
+                raise RuntimeError(f"Audio file not found: {track_path}")
+            except PermissionError as e:
+                logger.error(f"Permission denied reading audio file: {e}", exc_info=True)
+                raise RuntimeError(f"Permission denied: Cannot read audio file {track_file.name}")
             except Exception as e:
-                logger.error(f"Failed to cache lyrics: {e}")
-            
-            return lyrics
+                logger.error(f"Transcription failed: {e}", exc_info=True)
+                raise RuntimeError(f"Failed to transcribe audio. The file may be corrupted or in an unsupported format. Error: {e}")
         
-        return await asyncio.to_thread(_transcribe)
+        try:
+            return await asyncio.to_thread(_transcribe)
+        except Exception as e:
+            logger.error(f"Error in transcription thread: {e}", exc_info=True)
+            raise
     
     def clear_cache(self) -> None:
         """Clear all cached lyrics."""

@@ -38,7 +38,7 @@
   - **Property 5: Completed transcription produces timestamped lyrics**
   - **Validates: Requirements 2.3**
 
-- [ ] 4. Implement error handling in LyricsService
+- [x] 4. Implement error handling in LyricsService
   - Add try-catch blocks for file not found errors
   - Add try-catch blocks for model download failures
   - Add try-catch blocks for transcription errors
