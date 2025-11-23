@@ -15,18 +15,17 @@ class HelpScreen(ModalScreen[None]):
     }
     
     #help-container {
-        width: 80;
-        height: auto;
-        max-height: 90%;
-        background: $surface;
-        border: thick $primary;
+        width: 90;
+        height: 90%;
+        background: #1a1a1a;
+        border: thick #cc5500;
         padding: 1 2;
     }
     
     #help-scroll {
         width: 100%;
-        height: auto;
-        max-height: 30;
+        height: 1fr;
+        margin-bottom: 1;
     }
     
     #help-content {
@@ -36,7 +35,20 @@ class HelpScreen(ModalScreen[None]):
     
     #help-close-button {
         width: 100%;
-        margin-top: 1;
+        height: auto;
+        background: #2d2d2d;
+        color: #ff8c00;
+        border: solid #ff8c00;
+        text-style: bold;
+    }
+    
+    #help-close-button:hover {
+        background: #3d3d3d;
+        color: #ffb347;
+    }
+    
+    #help-close-button:focus {
+        border: solid #ffb347;
     }
     """
     

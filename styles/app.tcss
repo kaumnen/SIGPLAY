@@ -535,47 +535,6 @@ Input {
     margin-left: 2;
 }
 
-HelpScreen {
-    align: center middle;
-}
 
-#help-container {
-    width: 90;
-    height: auto;
-    max-height: 90%;
-    background: #1a1a1a;
-    border: thick #cc5500;
-    padding: 2;
-}
-
-#help-content {
-    width: 100%;
-    height: auto;
-    max-height: 35;
-    background: #0a0a0a;
-    color: #fff8dc;
-    border: solid #cc5500;
-    padding: 2;
-    margin-bottom: 1;
-    overflow-y: auto;
-    scrollbar-size-vertical: 1;
-}
-
-#help-close-button {
-    width: 100%;
-    background: #2d2d2d;
-    color: #ff8c00;
-    border: solid #cc5500;
-    text-style: bold;
-}
-
-#help-close-button:hover {
-    background: #3d3d3d;
-    color: #ffb347;
-}
-
-#help-close-button:focus {
-    border: solid #ff8c00;
-}
 
 
