@@ -101,8 +101,95 @@ class LyricsView(Container):
             await self._load_lyrics_for_track(track)
     
     async def _load_lyrics_for_track(self, track: Track) -> None:
-        """Load or generate lyrics for the selected track."""
-        pass
+        """Load or generate lyrics for the selected track.
+        
+        Args:
+            track: Track to load lyrics for.
+        """
+        self.is_loading = True
+        self.lyrics = []
+        self.active_segment_index = -1
+        
+        loading_indicator = self.query_one("#lyrics-loading", LoadingIndicator)
+        status_label = self.query_one("#lyrics-status", Static)
+        
+        loading_indicator.display = True
+        status_label.update("")
+        
+        try:
+            def progress_callback(message: str) -> None:
+                """Update status label from background thread."""
+                self.call_from_thread(status_label.update, message)
+            
+            lyrics = await self._lyrics_service.get_lyrics(
+                track.file_path,
+                progress_callback=progress_callback
+            )
+            
+            self.lyrics = lyrics
+            self._render_lyrics()
+            
+        except FileNotFoundError as e:
+            logger.error(f"Audio file not found: {e}")
+            status_label.update("Error: Audio file not found")
+            self.notify(
+                f"Audio file not found: {track.title}. Please refresh the library.",
+                severity="error",
+                timeout=5
+            )
+        except RuntimeError as e:
+            logger.error(f"Error loading lyrics: {e}")
+            error_msg = str(e)
+            if "model" in error_msg.lower():
+                status_label.update("Error: Failed to download Whisper model")
+                self.notify(
+                    "Failed to download Whisper model. Please check your internet connection and try again.",
+                    severity="error",
+                    timeout=5
+                )
+            elif "permission" in error_msg.lower():
+                status_label.update("Error: Permission denied")
+                self.notify(
+                    f"Permission denied: Cannot read audio file {track.title}",
+                    severity="error",
+                    timeout=5
+                )
+            else:
+                status_label.update("Error: Transcription failed")
+                self.notify(
+                    f"Failed to generate lyrics: {error_msg}",
+                    severity="error",
+                    timeout=5
+                )
+        except Exception as e:
+            logger.error(f"Unexpected error loading lyrics: {e}", exc_info=True)
+            status_label.update(f"Error: {str(e)}")
+            self.notify(
+                f"Failed to generate lyrics: {str(e)}",
+                severity="error",
+                timeout=5
+            )
+        finally:
+            self.is_loading = False
+            loading_indicator.display = False
+            status_label.update("")
+    
+    def _render_lyrics(self) -> None:
+        """Render lyrics segments to the display."""
+        content = self.query_one("#lyrics-content", Container)
+        content.remove_children()
+        
+        if not self.lyrics:
+            content.mount(Static("Select a track to view lyrics", classes="lyrics-empty"))
+            return
+        
+        for i, segment in enumerate(self.lyrics):
+            label = Static(
+                segment.text,
+                classes="lyric-segment",
+                id=f"lyric-{i}"
+            )
+            content.mount(label)
     
     def _update_active_segment(self) -> None:
         """Update active segment based on playback position."""

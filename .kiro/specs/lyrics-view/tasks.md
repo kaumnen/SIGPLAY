@@ -73,7 +73,7 @@
   - **Property 16: Track selection starts playback**
   - **Validates: Requirements 6.3, 6.4**
 
-- [ ] 7. Implement lyrics loading and display
+- [x] 7. Implement lyrics loading and display
   - Implement `_load_lyrics_for_track()` method to request lyrics from LyricsService
   - Show loading indicator and status updates during transcription
   - Handle progress callbacks to update status label
