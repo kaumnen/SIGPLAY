@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Add faster-whisper dependency and create data model
+- [x] 1. Add faster-whisper dependency and create data model
   - Add `faster-whisper>=1.1.0` to pyproject.toml dependencies
   - Create `models/lyrics.py` with `LyricSegment` dataclass
   - Export `LyricSegment` in `models/__init__.py`
