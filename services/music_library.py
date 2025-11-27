@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import logging
+import os
 
 from mutagen import File as MutagenFile
 
@@ -14,15 +15,22 @@ class MusicLibrary:
     """Service for discovering and managing music files."""
     
     SUPPORTED_EXTENSIONS = {'.mp3', '.flac', '.wav', '.ogg', '.m4a'}
-    DEFAULT_MUSIC_DIR = Path.home() / "Music"
+    
+    @staticmethod
+    def get_default_music_dir() -> Path:
+        """Get the default music directory using XDG spec or fallback to ~/Music."""
+        xdg_music = os.environ.get('XDG_MUSIC_DIR')
+        if xdg_music:
+            return Path(xdg_music)
+        return Path.home() / "Music"
     
     def __init__(self, music_dir: Path | None = None):
         """Initialize MusicLibrary with optional custom music directory.
         
         Args:
-            music_dir: Path to music directory. Defaults to ~/Music if not provided.
+            music_dir: Path to music directory. Defaults to XDG_MUSIC_DIR or ~/Music.
         """
-        self.music_dir = music_dir or self.DEFAULT_MUSIC_DIR
+        self.music_dir = music_dir or self.get_default_music_dir()
         self._tracks: list[Track] = []
     
     def scan(self) -> list[Track]:

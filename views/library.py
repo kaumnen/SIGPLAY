@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.widgets import ListView, ListItem, Label
@@ -31,7 +32,9 @@ class LibraryView(Container):
     
     def compose(self) -> ComposeResult:
         """Compose the library view with a list of tracks."""
-        yield Label("🎵 Music Library")
+        music_path = self.music_library.music_dir
+        display_path = f"~/{music_path.relative_to(Path.home())}" if music_path.is_relative_to(Path.home()) else str(music_path)
+        yield Label(f"🎵 Library: {display_path}", id="library-header")
         yield ListView(id="track-list")
     
     def _populate_list(self) -> None:
@@ -41,7 +44,9 @@ class LibraryView(Container):
         list_view.clear()
         
         if not self.tracks:
-            list_view.append(ListItem(Label("No music files found in ~/Music")))
+            music_path = self.music_library.music_dir
+            display_path = f"~/{music_path.relative_to(Path.home())}" if music_path.is_relative_to(Path.home()) else str(music_path)
+            list_view.append(ListItem(Label(f"No music files found in {display_path}")))
             return
         
         current_track = self.audio_player.get_current_track()
