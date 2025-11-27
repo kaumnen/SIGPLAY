@@ -17,6 +17,8 @@ from widgets.instructions_panel import InstructionsPanel
 
 logger = logging.getLogger(__name__)
 
+LARGE_MIX_THRESHOLD = 10
+
 
 class FloppyMixView(Container):
     """Full-screen view for Floppy Mix interface."""
@@ -29,6 +31,7 @@ class FloppyMixView(Container):
         self.music_library = music_library
         self._mix_file_path: str | None = None
         self._mix_statistics: dict | None = None
+        self._dj_client = None
         
         self._track_panel: TrackSelectionPanel | None = None
         self._instructions_panel: InstructionsPanel | None = None
@@ -100,6 +103,10 @@ class FloppyMixView(Container):
         """Cleanup resources when view is hidden."""
         logger.debug("Cleaning up Floppy Mix view")
         
+        if self.mixing_state == "mixing" and self._dj_client:
+            logger.debug("Cancelling in-progress mix")
+            self.app.run_worker(self._cancel_mix, exclusive=False)
+        
         if self._mix_file_path and self.mixing_state == "previewing":
             logger.debug("Cleaning up mix preview")
             self._stop_preview_playback()
@@ -108,12 +115,21 @@ class FloppyMixView(Container):
         self.mixing_state = "idle"
         self._mix_file_path = None
         self._mix_statistics = None
+        self._dj_client = None
         
         if self._track_panel:
             self._track_panel.clear_selection()
         self._hide_preview_controls()
         self._hide_statistics()
         self._update_status("Ready to mix")
+    
+    async def _cancel_mix(self) -> None:
+        """Cancel an in-progress mix operation."""
+        if self._dj_client:
+            try:
+                await self._dj_client.cancel()
+            except Exception as e:
+                logger.warning(f"Error cancelling mix: {e}")
     
     def _stop_preview_playback(self) -> None:
         """Stop playback of the mix preview."""
@@ -180,20 +196,28 @@ class FloppyMixView(Container):
             selected_tracks = self._track_panel.get_selected_tracks()
             instructions = self._instructions_panel.get_instructions()
             
+            if len(selected_tracks) > LARGE_MIX_THRESHOLD:
+                self.app.notify(
+                    f"⚠️ Large mix ({len(selected_tracks)} tracks) may take longer and cost more",
+                    severity="warning",
+                    timeout=5
+                )
+            
             logger.info(f"Creating mix with {len(selected_tracks)} tracks")
             
-            client = DJAgentClient()
+            self._dj_client = DJAgentClient()
             
             def progress_update(status: str) -> None:
                 """Update status display with agent status."""
                 self._update_status(status)
             
-            mix_file_path, statistics = await client.create_mix(
+            mix_file_path, statistics = await self._dj_client.create_mix(
                 tracks=selected_tracks,
                 instructions=instructions,
                 progress_callback=progress_update
             )
             
+            self._dj_client = None
             self.on_mix_complete(mix_file_path, statistics)
             
         except Exception as e:
@@ -259,16 +283,18 @@ class FloppyMixView(Container):
                 self.app.notify("❌ Mix file not found", severity="error")
                 return
             
+            duration_seconds = self._get_audio_duration(mix_path)
+            
             mix_track = Track(
                 title="Floppy Mix Preview",
                 artist="AI DJ",
                 album="Generated Mix",
-                duration=format_time(0),
+                duration=format_time(duration_seconds),
                 file_path=str(mix_path),
-                duration_seconds=0
+                duration_seconds=duration_seconds
             )
             
-            logger.info(f"Loading mix preview: {self._mix_file_path}")
+            logger.info(f"Loading mix preview: {self._mix_file_path} ({duration_seconds:.1f}s)")
             self.audio_player.play(mix_track)
             
             self.app.notify("🎵 Mix preview playing! Press Space to pause.", severity="information")
@@ -276,6 +302,17 @@ class FloppyMixView(Container):
         except Exception as e:
             logger.error(f"Failed to start mix preview: {e}")
             self.app.notify(f"❌ Failed to play mix: {str(e)}", severity="error")
+    
+    def _get_audio_duration(self, file_path: Path) -> float:
+        """Get duration of audio file in seconds."""
+        try:
+            import mutagen
+            audio = mutagen.File(str(file_path))
+            if audio and audio.info:
+                return audio.info.length
+        except Exception as e:
+            logger.warning(f"Could not read audio duration: {e}")
+        return 0.0
         
     def on_mix_error(self, error: str) -> None:
         """Handle mixing errors."""

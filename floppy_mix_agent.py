@@ -17,6 +17,7 @@ from datetime import datetime
 
 from strands import Agent, tool
 from strands.models.openai import OpenAIModel
+from strands.hooks import HookProvider, HookRegistry, BeforeToolCallEvent, AfterToolCallEvent
 from pedalboard import (
     Pedalboard, Reverb, Compressor, Chorus, Delay, 
     HighpassFilter, LowpassFilter, Gain, LowShelfFilter, HighShelfFilter,
@@ -38,8 +39,62 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-_audio_cache = {}
-_mix_segments = []
+
+class MixContext:
+    """Context for a single mix operation to avoid global state."""
+    
+    def __init__(self):
+        self.audio_cache: dict = {}
+        self.mix_segments: list = []
+    
+    def clear(self):
+        self.audio_cache.clear()
+        self.mix_segments.clear()
+
+
+_mix_context = MixContext()
+
+
+class ProgressHook(HookProvider):
+    """Hook to stream progress updates during agent execution."""
+    
+    TOOL_DESCRIPTIONS = {
+        'load_audio_track': '📂 Loading track',
+        'apply_effects': '🎛️ Applying effects',
+        'apply_ladder_filter': '🎚️ Applying ladder filter',
+        'apply_parallel_effects': '🔀 Applying parallel effects',
+        'apply_creative_effects': '🎨 Applying creative effects',
+        'automate_filter_sweep': '📈 Automating filter sweep',
+        'add_track_to_mix': '➕ Adding track to mix',
+        'render_final_mix': '💾 Rendering final mix',
+    }
+    
+    def register_hooks(self, registry: HookRegistry) -> None:
+        registry.add_callback(BeforeToolCallEvent, self.on_tool_start)
+        registry.add_callback(AfterToolCallEvent, self.on_tool_end)
+    
+    def on_tool_start(self, event: BeforeToolCallEvent) -> None:
+        tool_name = event.tool_use.get('name', 'unknown')
+        description = self.TOOL_DESCRIPTIONS.get(tool_name, f'🔧 {tool_name}')
+        
+        tool_input = event.tool_use.get('input', {})
+        if tool_name == 'load_audio_track':
+            track_path = tool_input.get('track_path', '')
+            track_name = Path(track_path).stem if track_path else 'track'
+            print(f"STATUS: {description}: {track_name}...", file=sys.stderr, flush=True)
+        elif tool_name == 'apply_effects':
+            track_id = tool_input.get('track_id', '')
+            print(f"STATUS: {description} to {track_id}...", file=sys.stderr, flush=True)
+        elif tool_name == 'render_final_mix':
+            print(f"STATUS: {description}...", file=sys.stderr, flush=True)
+        else:
+            print(f"STATUS: {description}...", file=sys.stderr, flush=True)
+        
+        logger.debug(f"Tool started: {tool_name}")
+    
+    def on_tool_end(self, event: AfterToolCallEvent) -> None:
+        tool_name = event.tool_use.get('name', 'unknown')
+        logger.debug(f"Tool completed: {tool_name}")
 
 
 @tool
@@ -54,15 +109,13 @@ def load_audio_track(track_path: str, track_id: str) -> str:
         Success message with track info (duration, sample rate, channels)
     """
     try:
-        track_name = Path(track_path).stem
-        print(f"STATUS: 📂 Loading {track_name}...", file=sys.stderr, flush=True)
         logger.info(f"Loading track: {track_path} as {track_id}")
         
         with AudioFile(track_path) as f:
             audio = f.read(f.frames)
             sample_rate = f.samplerate
             
-        _audio_cache[track_id] = {
+        _mix_context.audio_cache[track_id] = {
             'audio': audio,
             'sample_rate': sample_rate,
             'path': track_path
@@ -72,7 +125,6 @@ def load_audio_track(track_path: str, track_id: str) -> str:
         channels = audio.shape[0]
         
         logger.info(f"Loaded {track_id}: {duration:.1f}s, {sample_rate}Hz, {channels}ch")
-        print(f"STATUS: ✓ Loaded {track_name} ({duration:.1f}s)", file=sys.stderr, flush=True)
         return f"✓ Loaded {track_id}: {duration:.1f}s, {sample_rate}Hz, {channels} channels"
         
     except Exception as e:
@@ -122,10 +174,10 @@ def apply_effects(
         Success message with applied effects
     """
     try:
-        if track_id not in _audio_cache:
+        if track_id not in _mix_context.audio_cache:
             return f"✗ Error: Track {track_id} not loaded. Load it first with load_audio_track."
         
-        track_data = _audio_cache[track_id]
+        track_data = _mix_context.audio_cache[track_id]
         audio = track_data['audio']
         sample_rate = track_data['sample_rate']
         
@@ -185,7 +237,6 @@ def apply_effects(
             applied.append(f"gain {gain_db:+.1f}dB")
         
         if effects:
-            print(f"STATUS: 🎛️ Applying effects to {track_id}: {', '.join(applied)}", file=sys.stderr, flush=True)
             board = Pedalboard(effects)
             processed_audio = board(audio, sample_rate)
             track_data['audio'] = processed_audio
@@ -221,10 +272,10 @@ def apply_ladder_filter(
         Success message with filter info
     """
     try:
-        if track_id not in _audio_cache:
+        if track_id not in _mix_context.audio_cache:
             return f"✗ Error: Track {track_id} not loaded"
         
-        track_data = _audio_cache[track_id]
+        track_data = _mix_context.audio_cache[track_id]
         audio = track_data['audio']
         sample_rate = track_data['sample_rate']
         
@@ -272,10 +323,10 @@ def apply_parallel_effects(
         Success message with parallel processing info
     """
     try:
-        if track_id not in _audio_cache:
+        if track_id not in _mix_context.audio_cache:
             return f"✗ Error: Track {track_id} not loaded"
         
-        track_data = _audio_cache[track_id]
+        track_data = _mix_context.audio_cache[track_id]
         audio = track_data['audio']
         sample_rate = track_data['sample_rate']
         
@@ -322,10 +373,10 @@ def apply_creative_effects(
         Success message with creative effects info
     """
     try:
-        if track_id not in _audio_cache:
+        if track_id not in _mix_context.audio_cache:
             return f"✗ Error: Track {track_id} not loaded"
         
-        track_data = _audio_cache[track_id]
+        track_data = _mix_context.audio_cache[track_id]
         audio = track_data['audio']
         sample_rate = track_data['sample_rate']
         
@@ -375,10 +426,10 @@ def automate_filter_sweep(
         Success message with automation info
     """
     try:
-        if track_id not in _audio_cache:
+        if track_id not in _mix_context.audio_cache:
             return f"✗ Error: Track {track_id} not loaded"
         
-        track_data = _audio_cache[track_id]
+        track_data = _mix_context.audio_cache[track_id]
         audio = track_data['audio']
         sample_rate = track_data['sample_rate']
         
@@ -438,10 +489,10 @@ def add_track_to_mix(
         Success message with segment info
     """
     try:
-        if track_id not in _audio_cache:
+        if track_id not in _mix_context.audio_cache:
             return f"✗ Error: Track {track_id} not loaded"
         
-        track_data = _audio_cache[track_id]
+        track_data = _mix_context.audio_cache[track_id]
         audio = track_data['audio'].copy()
         sample_rate = track_data['sample_rate']
         
@@ -450,7 +501,7 @@ def add_track_to_mix(
         
         audio = audio[:, start_sample:end_sample]
         
-        _mix_segments.append({
+        _mix_context.mix_segments.append({
             'audio': audio,
             'sample_rate': sample_rate,
             'crossfade_duration': crossfade_duration,
@@ -459,7 +510,6 @@ def add_track_to_mix(
         
         duration = audio.shape[1] / sample_rate
         logger.info(f"Added {track_id} to mix: {duration:.1f}s, crossfade={crossfade_duration}s")
-        print(f"STATUS: ➕ Added {track_id} to mix ({duration:.1f}s, {crossfade_duration}s crossfade)", file=sys.stderr, flush=True)
         return f"✓ Added {track_id} to mix: {duration:.1f}s (crossfade: {crossfade_duration}s)"
         
     except Exception as e:
@@ -479,16 +529,15 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
         Success message with output file path and duration
     """
     try:
-        if not _mix_segments:
+        if not _mix_context.mix_segments:
             return "✗ Error: No tracks added to mix. Use add_track_to_mix first."
         
-        logger.info(f"Rendering final mix with {len(_mix_segments)} segments")
-        print(f"STATUS: 🎚️ Rendering final mix ({len(_mix_segments)} segments)...", file=sys.stderr, flush=True)
+        logger.info(f"Rendering final mix with {len(_mix_context.mix_segments)} segments")
         
         final_audio = None
-        sample_rate = _mix_segments[0]['sample_rate']
+        sample_rate = _mix_context.mix_segments[0]['sample_rate']
         
-        for i, segment in enumerate(_mix_segments):
+        for i, segment in enumerate(_mix_context.mix_segments):
             audio = segment['audio']
             crossfade_duration = segment['crossfade_duration']
             
@@ -520,7 +569,6 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
                     final_audio = np.concatenate([final_audio, audio], axis=1)
         
         if normalize:
-            print("STATUS: 🔊 Normalizing audio levels...", file=sys.stderr, flush=True)
             max_val = np.max(np.abs(final_audio))
             if max_val > 0:
                 final_audio = final_audio / max_val * 0.95
@@ -528,7 +576,6 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
-        print("STATUS: 💾 Writing audio file...", file=sys.stderr, flush=True)
         with AudioFile(str(output_file), 'w', sample_rate, final_audio.shape[0]) as f:
             f.write(final_audio)
         
@@ -669,7 +716,8 @@ def create_dj_agent() -> Agent:
             automate_filter_sweep,
             add_track_to_mix,
             render_final_mix
-        ]
+        ],
+        hooks=[ProgressHook()]
     )
     
     return agent
@@ -690,9 +738,7 @@ def handle_mix_request(tracks: list[dict], instructions: str, output_dir: str) -
     Raises:
         Exception: If mixing fails
     """
-    global _audio_cache, _mix_segments
-    _audio_cache = {}
-    _mix_segments = []
+    _mix_context.clear()
     
     import time
     start_time = time.time()
@@ -864,8 +910,7 @@ Start by loading all tracks, then apply effects, then add them to the mix, and f
         print(f"ERROR: Agent execution failed: {e}", file=sys.stderr, flush=True)
         raise Exception(f"Failed to create mix: {str(e)}")
     finally:
-        _audio_cache = {}
-        _mix_segments = []
+        _mix_context.clear()
 
 
 def main():

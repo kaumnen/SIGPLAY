@@ -47,9 +47,26 @@ class DJAgentClient:
             agent_script_path: Path to the DJ agent Python script
         """
         self.agent_script_path = Path(agent_script_path)
+        self._agent_process: asyncio.subprocess.Process | None = None
+        self._cancelled = False
         
         if not self.agent_script_path.exists():
             raise FileNotFoundError(f"DJ agent script not found: {agent_script_path}")
+    
+    async def cancel(self) -> None:
+        """Cancel an in-progress mix operation."""
+        self._cancelled = True
+        if self._agent_process:
+            try:
+                logger.info("Cancelling agent process")
+                self._agent_process.terminate()
+                await asyncio.wait_for(self._agent_process.wait(), timeout=5)
+                logger.info("Agent process terminated")
+            except asyncio.TimeoutError:
+                logger.warning("Agent process did not terminate, killing")
+                self._agent_process.kill()
+            except Exception as e:
+                logger.warning(f"Error cancelling agent process: {e}")
     
     async def create_mix(
         self,
@@ -88,6 +105,7 @@ class DJAgentClient:
         
         logger.info(f"Creating mix with {len(tracks)} tracks")
         
+        self._cancelled = False
         request_data = self._prepare_agent_input(tracks, instructions)
         
         with tempfile.NamedTemporaryFile(
@@ -98,13 +116,11 @@ class DJAgentClient:
             json.dump(request_data, request_file)
             request_file_path = request_file.name
         
-        agent_process = None
-        
         try:
             try:
                 env = os.environ.copy()
                 
-                agent_process = await asyncio.create_subprocess_exec(
+                self._agent_process = await asyncio.create_subprocess_exec(
                     'uv', 'run', str(self.agent_script_path), request_file_path,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -123,10 +139,10 @@ class DJAgentClient:
                     "Please check your Strands Agents installation."
                 )
             
-            logger.info(f"Agent process started with PID {agent_process.pid}")
+            logger.info(f"Agent process started with PID {self._agent_process.pid}")
             
             mix_file_path, statistics = await self._monitor_agent_progress(
-                agent_process,
+                self._agent_process,
                 progress_callback
             )
             
@@ -134,22 +150,26 @@ class DJAgentClient:
             
         except asyncio.TimeoutError:
             logger.error("Agent execution timed out")
-            if agent_process:
+            if self._agent_process:
                 try:
-                    agent_process.kill()
-                    await agent_process.wait()
+                    self._agent_process.kill()
+                    await self._agent_process.wait()
                 except Exception as e:
                     logger.warning(f"Error killing agent process: {e}")
             raise AgentTimeout(
                 f"DJ agent timed out after {self.AGENT_TIMEOUT} seconds. "
                 "Try simpler instructions or fewer tracks."
             )
+        except asyncio.CancelledError:
+            logger.info("Agent execution was cancelled")
+            raise AgentError("Mix operation was cancelled")
         except (AgentError, AgentTimeout, MixingError):
             raise
         except Exception as e:
             logger.exception(f"Unexpected error during agent execution: {e}")
             raise AgentError(f"Failed to execute DJ agent: {str(e)}")
         finally:
+            self._agent_process = None
             try:
                 Path(request_file_path).unlink()
             except Exception as e:

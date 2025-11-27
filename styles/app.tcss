@@ -315,6 +315,10 @@ InstructionsPanel {
     padding: 1;
 }
 
+#instructions-input.placeholder {
+    color: #666666;
+}
+
 TextArea {
     background: #0a0a0a;
     color: #fff8dc;

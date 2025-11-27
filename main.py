@@ -6,6 +6,7 @@ from textual.screen import ModalScreen
 import asyncio
 import logging
 import os
+import time
 from pathlib import Path
 
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
@@ -76,6 +77,8 @@ class SigplayApp(App):
         
         logger.info("Starting SIGPLAY application")
         
+        self._cleanup_old_temp_mixes()
+        
         try:
             self.audio_player = AudioPlayer()
         except RuntimeError as e:
@@ -85,6 +88,30 @@ class SigplayApp(App):
         self.music_library = MusicLibrary()
         self._session_openrouter_key: str | None = None
         logger.info("Services initialized successfully")
+    
+    def _cleanup_old_temp_mixes(self) -> None:
+        """Clean up orphaned temp mix files older than 24 hours."""
+        try:
+            temp_dir = Path.home() / '.local' / 'share' / 'sigplay' / 'temp_mixes'
+            if not temp_dir.exists():
+                return
+            
+            cutoff_time = time.time() - 86400  # 24 hours ago
+            cleaned_count = 0
+            
+            for f in temp_dir.glob("floppy_mix_*.wav"):
+                try:
+                    if f.stat().st_mtime < cutoff_time:
+                        f.unlink()
+                        cleaned_count += 1
+                        logger.debug(f"Cleaned up old temp mix: {f.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up {f}: {e}")
+            
+            if cleaned_count > 0:
+                logger.info(f"Cleaned up {cleaned_count} old temp mix file(s)")
+        except Exception as e:
+            logger.warning(f"Error during temp mix cleanup: {e}")
     
     def compose(self) -> ComposeResult:
         """Compose the main application layout."""
