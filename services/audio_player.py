@@ -3,6 +3,7 @@ from __future__ import annotations
 import miniaudio
 import time
 import threading
+import random
 import numpy as np
 from pathlib import Path
 import logging
@@ -45,6 +46,9 @@ class AudioPlayer:
             
             self._audio_buffer_lock = threading.Lock()
             self._latest_audio_buffer: np.ndarray | None = None
+            
+            self._shuffle_enabled: bool = False
+            self._original_playlist: list[Track] = []
             
             logger.info("Audio player initialized successfully")
             
@@ -314,8 +318,47 @@ class AudioPlayer:
     
     def set_playlist(self, tracks: list[Track], start_index: int = 0) -> None:
         """Set current playlist and starting track index."""
-        self._playlist = tracks
-        self._current_index = max(0, min(start_index, len(tracks) - 1)) if tracks else -1
+        self._original_playlist = list(tracks)
+        
+        if self._shuffle_enabled and tracks:
+            current_track = tracks[start_index] if 0 <= start_index < len(tracks) else None
+            self._playlist = list(tracks)
+            random.shuffle(self._playlist)
+            if current_track and current_track in self._playlist:
+                self._playlist.remove(current_track)
+                self._playlist.insert(0, current_track)
+            self._current_index = 0
+        else:
+            self._playlist = list(tracks)
+            self._current_index = max(0, min(start_index, len(tracks) - 1)) if tracks else -1
+    
+    def toggle_shuffle(self) -> bool:
+        """Toggle shuffle mode on/off.
+        
+        Returns:
+            True if shuffle is now enabled, False if disabled.
+        """
+        self._shuffle_enabled = not self._shuffle_enabled
+        current_track = self._current_track
+        
+        if self._shuffle_enabled:
+            self._playlist = list(self._original_playlist)
+            random.shuffle(self._playlist)
+            if current_track and current_track in self._playlist:
+                self._playlist.remove(current_track)
+                self._playlist.insert(0, current_track)
+                self._current_index = 0
+        else:
+            self._playlist = list(self._original_playlist)
+            if current_track and current_track in self._playlist:
+                self._current_index = self._playlist.index(current_track)
+        
+        logger.info(f"Shuffle mode {'enabled' if self._shuffle_enabled else 'disabled'}")
+        return self._shuffle_enabled
+    
+    def is_shuffle_enabled(self) -> bool:
+        """Check if shuffle mode is enabled."""
+        return self._shuffle_enabled
     
     def get_latest_audio_buffer(self) -> np.ndarray | None:
         """Get the most recent audio buffer.

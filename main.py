@@ -66,6 +66,7 @@ class SigplayApp(App):
         Binding("=", "volume_up", "Vol+", show=False, priority=True),
         Binding("-", "volume_down", "Vol-", priority=True),
         Binding("m", "toggle_mute", "Mute", priority=True),
+        Binding("r", "toggle_shuffle", "Shuffle", priority=True),
         Binding("f", "show_floppy_mix", "Floppy Mix Page", priority=True),
         Binding("d", "back_to_main", "Default Page", priority=True),
         Binding("h", "show_help", "Help", priority=True),
@@ -131,6 +132,7 @@ class SigplayApp(App):
         header = self.query_one(Header)
         header.volume_level = int(self.audio_player.get_volume() * 100)
         header.is_muted = self.audio_player.is_muted()
+        header.is_shuffle = self.audio_player.is_shuffle_enabled()
         
         self.run_worker(self._scan_library, exclusive=True)
         self.set_interval(TRACK_END_CHECK_INTERVAL, self._check_track_end)
@@ -330,6 +332,18 @@ class SigplayApp(App):
         
         now_playing = self.query_one("#now_playing", NowPlayingView)
         now_playing._update_progress()
+    
+    def action_toggle_shuffle(self) -> None:
+        """Toggle shuffle mode."""
+        is_shuffle = self.audio_player.toggle_shuffle()
+        
+        header = self.query_one(Header)
+        header.is_shuffle = is_shuffle
+        
+        if is_shuffle:
+            self.notify("🔀 Shuffle ON", timeout=1.5)
+        else:
+            self.notify("➡️ Shuffle OFF", timeout=1.5)
     
     def action_show_floppy_mix(self) -> None:
         """Show the Floppy Mix view."""
