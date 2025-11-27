@@ -225,6 +225,23 @@ class SigplayApp(App):
     
     def action_quit(self) -> None:
         """Handle quit action for clean shutdown."""
+        self._cleanup_and_exit()
+    
+    def _cleanup_and_exit(self) -> None:
+        """Perform cleanup before exiting."""
+        try:
+            switcher = self.query_one("#view-switcher", ContentSwitcher)
+            if switcher.current == "floppy-mix-view":
+                floppy_mix_view = self.query_one("#floppy-mix-view", FloppyMixView)
+                floppy_mix_view.cleanup()
+        except Exception as e:
+            logger.debug(f"Error during view cleanup: {e}")
+        
+        try:
+            self.audio_player.cleanup()
+        except Exception as e:
+            logger.debug(f"Error cleaning up audio player: {e}")
+        
         self.exit()
     
     def action_play_pause(self) -> None:

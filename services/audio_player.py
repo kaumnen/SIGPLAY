@@ -185,13 +185,22 @@ class AudioPlayer:
         self._stop_playback.set()
         self._track_ended_naturally = False
         
+        with self._audio_buffer_lock:
+            self._latest_audio_buffer = None
+        
         if self._device:
             try:
                 self._device.stop()
-                self._device.close()
             except Exception as e:
                 logger.debug(f"Error stopping device: {e}")
+            
+            try:
+                self._device.close()
+            except Exception as e:
+                logger.debug(f"Error closing device: {e}")
+            
             self._device = None
+            time.sleep(0.05)
         
         self._stream_generator = None
         self._state = PlaybackState.STOPPED
@@ -372,3 +381,12 @@ class AudioPlayer:
     def track_ended_naturally(self) -> bool:
         """Check if track ended naturally (not manually stopped)."""
         return self._track_ended_naturally
+    
+    def cleanup(self) -> None:
+        """Clean up all resources for shutdown."""
+        logger.info("Cleaning up audio player resources")
+        self.stop()
+        self._playlist = []
+        self._original_playlist = []
+        self._current_track = None
+        self._current_index = -1
