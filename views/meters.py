@@ -29,6 +29,14 @@ class MetersView(Container):
         self.total_bytes_streamed = 0
         self.peak_amplitude = 0
         self.rms_level = 0.0
+        self._last_track_path: str | None = None
+    
+    def reset_stats(self) -> None:
+        """Reset all stats for a new track."""
+        self.byte_offset = 0
+        self.total_bytes_streamed = 0
+        self.peak_amplitude = 0
+        self.rms_level = 0.0
     
     def compose(self) -> ComposeResult:
         yield Static(self._render_byte_stream(None), id="byte-stream-display")
@@ -154,6 +162,12 @@ class MetersView(Container):
         try:
             is_playing = self.audio_player.is_playing()
             audio_buffer = self.audio_player.get_latest_audio_buffer()
+            
+            current_track = self.audio_player.get_current_track()
+            current_path = current_track.file_path if current_track else None
+            if current_path != self._last_track_path:
+                self.reset_stats()
+                self._last_track_path = current_path
             
             if is_playing and audio_buffer is not None and len(audio_buffer) > 0:
                 audio_bytes = audio_buffer.tobytes()
