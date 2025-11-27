@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 import os
+from typing import Any
 
 from mutagen import File as MutagenFile
 
@@ -99,7 +100,7 @@ class MusicLibrary:
         return self._tracks
     
     @staticmethod
-    def _extract_metadata(file_path: Path) -> dict[str, any]:
+    def _extract_metadata(file_path: Path) -> dict[str, Any]:
         """Extract metadata from audio file using mutagen.
         
         Args:

@@ -158,15 +158,6 @@ class FloppyMixView(Container):
             self.app.action_back_to_main()
             event.prevent_default()
             event.stop()
-    
-    def _toggle_preview_playback(self) -> None:
-        """Toggle play/pause for the mix preview."""
-        if self.audio_player.is_playing():
-            self.audio_player.pause()
-            logger.debug("Paused mix preview")
-        else:
-            self.audio_player.resume()
-            logger.debug("Resumed mix preview")
         
     async def start_mixing(self) -> None:
         """Initiate the mixing process with selected tracks and instructions."""

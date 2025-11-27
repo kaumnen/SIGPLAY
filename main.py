@@ -35,6 +35,7 @@ class MainViewContainer(Vertical):
         yield MetersView(self.audio_player, id="meters")
 
 TRACK_END_CHECK_INTERVAL = 0.5
+TEMP_MIX_MAX_AGE_SECONDS = 86400  # 24 hours
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +98,7 @@ class SigplayApp(App):
             if not temp_dir.exists():
                 return
             
-            cutoff_time = time.time() - 86400  # 24 hours ago
+            cutoff_time = time.time() - TEMP_MIX_MAX_AGE_SECONDS
             cleaned_count = 0
             
             for f in temp_dir.glob("floppy_mix_*.wav"):

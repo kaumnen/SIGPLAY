@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 def format_time(seconds: float) -> str:
@@ -32,7 +33,7 @@ class Track:
     duration_seconds: float
     
     @classmethod
-    def from_file(cls, file_path: Path, metadata: dict[str, any]) -> Track:
+    def from_file(cls, file_path: Path, metadata: dict[str, Any]) -> Track:
         """Factory method to create Track from file and metadata."""
         return cls(
             title=metadata.get('title', file_path.stem),
