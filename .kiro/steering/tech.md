@@ -245,17 +245,65 @@ device.start(gen)
 
 ## Strands Agents Integration
 
+### Agent Context Pattern
+```python
+class MixContext:
+    """Context for a single mix operation to avoid global state."""
+    
+    def __init__(self):
+        self.audio_cache: dict = {}
+        self.mix_segments: list = []
+    
+    def clear(self):
+        self.audio_cache.clear()
+        self.mix_segments.clear()
+
+_mix_context = MixContext()
+```
+
+### Progress Hook Pattern
+```python
+from strands.hooks import HookProvider, HookRegistry, BeforeToolCallEvent, AfterToolCallEvent
+
+class ProgressHook(HookProvider):
+    """Hook to stream progress updates during agent execution."""
+    
+    TOOL_DESCRIPTIONS = {
+        'load_audio_track': '📂 Loading track',
+        'apply_effects': '🎛️ Applying effects',
+        'render_final_mix': '💾 Rendering final mix',
+    }
+    
+    def register_hooks(self, registry: HookRegistry) -> None:
+        registry.add_callback(BeforeToolCallEvent, self.on_tool_start)
+        registry.add_callback(AfterToolCallEvent, self.on_tool_end)
+    
+    def on_tool_start(self, event: BeforeToolCallEvent) -> None:
+        tool_name = event.tool_use.get('name', 'unknown')
+        description = self.TOOL_DESCRIPTIONS.get(tool_name, f'🔧 {tool_name}')
+        print(f"STATUS: {description}...", file=sys.stderr, flush=True)
+    
+    def on_tool_end(self, event: AfterToolCallEvent) -> None:
+        tool_name = event.tool_use.get('name', 'unknown')
+        logger.debug(f"Tool completed: {tool_name}")
+
+# Register hooks with agent
+agent = Agent(
+    model=model,
+    system_prompt=SYSTEM_PROMPT,
+    tools=[...],
+    hooks=[ProgressHook()]
+)
+```
+
 ### Agent Script Pattern
 ```python
-# Create standalone agent script (e.g., floppy_mix_agent.py)
 from strands import Agent, tool
 from strands.models.openai import OpenAIModel
 
-# Define domain-specific tools using @tool decorator
 @tool
 def load_audio_track(track_path: str, track_id: str) -> str:
     """Load an audio track into memory for processing."""
-    # Implementation using pedalboard, numpy, etc.
     return f"✓ Loaded {track_id}: duration, sample_rate, channels"
 
 @tool
@@ -269,23 +317,66 @@ def apply_effects(
     lowpass_cutoff_hz: float = 0.0,
     bass_boost_db: float = 0.0,
     treble_boost_db: float = 0.0,
-    gain_db: float = 0.0
+    gain_db: float = 0.0,
+    phaser_rate_hz: float = 0.0,
+    distortion_drive_db: float = 0.0,
+    noise_gate_threshold_db: float = 0.0,
+    pitch_shift_semitones: float = 0.0
 ) -> str:
     """Apply audio effects to a loaded track.
     
     All parameters are optional (0 = off). Examples:
     - Boost bass: bass_boost_db=4 to 6
-    - Reduce bass: bass_boost_db=-3 to -6
-    - Boost treble: treble_boost_db=3 to 5
-    - Add reverb: reverb_room_size=0.3-0.5
-    - Compress: compressor_threshold_db=-12 to -15
-    - Remove rumble: highpass_cutoff_hz=80-100
-    - Add warmth: lowpass_cutoff_hz=10000-12000
+    - Movement: phaser_rate_hz=0.5 to 1.5
+    - Warmth: distortion_drive_db=10 to 15
+    - Clean noise: noise_gate_threshold_db=-40 to -50
+    - Harmonic mixing: pitch_shift_semitones=+/-7 (fifth) or +/-12 (octave)
     """
-    # Implementation using Pedalboard effects
     return f"✓ Applied effects to {track_id}"
 
+@tool
+def apply_ladder_filter(
+    track_id: str,
+    mode: str = "LPF24",
+    cutoff_hz: float = 1000.0,
+    resonance: float = 0.0
+) -> str:
+    """Apply Moog-style ladder filter with resonance.
+    
+    Modes: "LPF12", "LPF24", "HPF12", "HPF24", "BPF12", "BPF24"
+    """
+    return f"✓ Applied ladder filter to {track_id}"
 
+@tool
+def apply_parallel_effects(
+    track_id: str,
+    dry_gain_db: float = 0.0,
+    wet_reverb_room_size: float = 0.0,
+    wet_delay_seconds: float = 0.0,
+    wet_gain_db: float = -6.0
+) -> str:
+    """Apply parallel effects processing (dry/wet mix)."""
+    return f"✓ Applied parallel effects to {track_id}"
+
+@tool
+def apply_creative_effects(
+    track_id: str,
+    bitcrush_bit_depth: int = 0,
+    clipping_threshold_db: float = 0.0
+) -> str:
+    """Apply creative lo-fi and distortion effects."""
+    return f"✓ Applied creative effects to {track_id}"
+
+@tool
+def automate_filter_sweep(
+    track_id: str,
+    start_cutoff_hz: float = 200.0,
+    end_cutoff_hz: float = 5000.0,
+    filter_mode: str = "LPF24",
+    resonance: float = 0.5
+) -> str:
+    """Automate a filter sweep across the entire track."""
+    return f"✓ Applied filter sweep to {track_id}"
 
 @tool
 def add_track_to_mix(
@@ -295,18 +386,16 @@ def add_track_to_mix(
     end_time: float | None = None
 ) -> str:
     """Add a processed track to the final mix with optional crossfade."""
-    # Implementation with crossfade logic
     return f"✓ Added {track_id} to mix"
 
 @tool
 def render_final_mix(output_path: str, normalize: bool = True) -> str:
     """Render and save the final mix."""
-    # Implementation using soundfile
     return f"✓ Mix saved to {output_path}"
 
 # Configure agent with OpenRouter (OpenAI-compatible)
 api_key = os.environ.get('OPENROUTER_API_KEY')
-model_id = os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-haiku-4.5')
+model_id = os.environ.get('SIGPLAY_MIX_MODEL_ID', os.environ.get('OPENROUTER_MODEL', 'anthropic/claude-haiku-4.5'))
 
 model = OpenAIModel(
     client_args={
@@ -320,10 +409,14 @@ model = OpenAIModel(
 agent = Agent(
     model=model,
     system_prompt=SYSTEM_PROMPT,
-    tools=[load_audio_track, apply_effects, change_tempo, add_track_to_mix, render_final_mix]
+    tools=[
+        load_audio_track, apply_effects, apply_ladder_filter,
+        apply_parallel_effects, apply_creative_effects,
+        automate_filter_sweep, add_track_to_mix, render_final_mix
+    ],
+    hooks=[ProgressHook()]
 )
 
-# Process request - agent calls tools directly
 result = agent(prompt)
 print(json.dumps({'status': 'success', 'result': result}))
 ```

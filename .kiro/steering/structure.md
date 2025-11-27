@@ -93,13 +93,24 @@ The Floppy Mix feature is implemented as a full-screen view (`FloppyMixView`) th
 Agents are implemented as standalone Python scripts that:
 - Accept JSON input via command-line argument (file path)
 - Use Strands Agents framework with OpenRouter (OpenAI-compatible API)
-- Define tools using `@tool` decorator for code execution, file I/O, etc.
+- Define tools using `@tool` decorator for audio processing, file I/O, etc.
 - Return JSON response to stdout with `status` and result fields
 - Log to `~/.local/share/sigplay/<agent_name>.log`
 - Are invoked via `uv run` subprocess from service layer
 - Communicate progress via stderr with `STATUS:` prefix messages
 - Use `client_args` dict for OpenAI model configuration (not direct kwargs)
-- Execute Python code via `uv run python` for proper dependency isolation
+- Use `hooks` parameter with `HookProvider` subclasses for progress streaming
+- Use context classes (e.g., `MixContext`) to avoid global state pollution
+
+**Floppy Mix Agent Tools:**
+- `load_audio_track` - Load audio file into memory cache
+- `apply_effects` - Standard effects (reverb, compression, EQ, phaser, distortion, noise gate, pitch shift)
+- `apply_ladder_filter` - Moog-style resonant filter (LPF/HPF/BPF modes)
+- `apply_parallel_effects` - Dry/wet parallel processing
+- `apply_creative_effects` - Lo-fi effects (bitcrush, clipping)
+- `automate_filter_sweep` - Automated filter cutoff modulation
+- `add_track_to_mix` - Add processed track with crossfade
+- `render_final_mix` - Render and save final mix file
 
 ### Import Conventions
 
