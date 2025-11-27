@@ -51,8 +51,42 @@ class MetersView(Container):
         
         width = max(MIN_DISPLAY_WIDTH, self.terminal_width - 6)
         bytes_per_line = width // 3
+        actual_bytes_per_sec = SAMPLE_RATE * NUM_CHANNELS * BYTES_PER_SAMPLE
         
-        result.append("\n  LIVE AUDIO STREAM\n", style="#ff8c00 bold")
+        result.append("\n", style="#1a1a1a")
+        
+        if audio_array is not None and len(audio_array) > 0:
+            result.append("  ", style="#1a1a1a")
+            waveform = self._render_waveform(audio_array, width - 4)
+            result.append(waveform)
+            result.append("\n\n")
+        
+        left_info = f"Offset: {self.total_bytes_streamed:08X}  │  {SAMPLE_RATE}Hz {NUM_CHANNELS}ch"
+        right_info = f"{actual_bytes_per_sec:,} B/s"
+        padding = width - len(left_info) - len(right_info)
+        
+        result.append("  ", style="#1a1a1a")
+        result.append(f"Offset: {self.total_bytes_streamed:08X}", style="#888888")
+        result.append("  │  ", style="#555555")
+        result.append(f"{SAMPLE_RATE}Hz {NUM_CHANNELS}ch", style="#cc5500")
+        result.append(" " * max(1, padding), style="#1a1a1a")
+        result.append(f"{actual_bytes_per_sec:,} B/s", style="#ffb347")
+        result.append("\n")
+        
+        if audio_array is not None and len(audio_array) > 0:
+            rms_db = 20 * np.log10(self.rms_level / 32768) if self.rms_level > 0 else -60
+            left_stats = f"Peak: {self.peak_amplitude:5d}  │  RMS: {rms_db:+.1f}dB"
+            right_stats = f"Buffer: {len(audio_array):,} samples"
+            stats_padding = width - len(left_stats) - len(right_stats)
+            
+            result.append("  ", style="#1a1a1a")
+            result.append(f"Peak: {self.peak_amplitude:5d}", style="#ff8c00")
+            result.append("  │  ", style="#555555")
+            result.append(f"RMS: {rms_db:+.1f}dB", style="#ffb347")
+            result.append(" " * max(1, stats_padding), style="#1a1a1a")
+            result.append(f"Buffer: {len(audio_array):,} samples", style="#cc5500")
+            result.append("\n")
+        
         result.append("  " + "─" * width + "\n", style="#cc5500")
         
         start_idx = self.byte_offset % len(audio_bytes)
@@ -81,41 +115,6 @@ class MetersView(Container):
                 result.append(hex_str, style=color)
                 result.append(" ", style="#1a1a1a")
             
-            result.append("\n")
-        
-        result.append("  " + "─" * width + "\n", style="#cc5500")
-        
-        actual_bytes_per_sec = SAMPLE_RATE * NUM_CHANNELS * BYTES_PER_SAMPLE
-        
-        left_info = f"Offset: {self.total_bytes_streamed:08X}  │  {SAMPLE_RATE}Hz {NUM_CHANNELS}ch"
-        right_info = f"{actual_bytes_per_sec:,} B/s"
-        padding = width - len(left_info) - len(right_info)
-        
-        result.append("  ", style="#1a1a1a")
-        result.append(f"Offset: {self.total_bytes_streamed:08X}", style="#888888")
-        result.append("  │  ", style="#555555")
-        result.append(f"{SAMPLE_RATE}Hz {NUM_CHANNELS}ch", style="#cc5500")
-        result.append(" " * max(1, padding), style="#1a1a1a")
-        result.append(f"{actual_bytes_per_sec:,} B/s", style="#ffb347")
-        result.append("\n")
-        
-        if audio_array is not None and len(audio_array) > 0:
-            rms_db = 20 * np.log10(self.rms_level / 32768) if self.rms_level > 0 else -60
-            left_stats = f"Peak: {self.peak_amplitude:5d}  │  RMS: {rms_db:+.1f}dB"
-            right_stats = f"Buffer: {len(audio_array):,} samples"
-            stats_padding = width - len(left_stats) - len(right_stats)
-            
-            result.append("  ", style="#1a1a1a")
-            result.append(f"Peak: {self.peak_amplitude:5d}", style="#ff8c00")
-            result.append("  │  ", style="#555555")
-            result.append(f"RMS: {rms_db:+.1f}dB", style="#ffb347")
-            result.append(" " * max(1, stats_padding), style="#1a1a1a")
-            result.append(f"Buffer: {len(audio_array):,} samples", style="#cc5500")
-            result.append("\n")
-            
-            result.append("  ", style="#1a1a1a")
-            waveform = self._render_waveform(audio_array, width - 4)
-            result.append(waveform)
             result.append("\n")
         
         return result
