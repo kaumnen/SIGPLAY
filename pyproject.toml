@@ -1,6 +1,6 @@
 [project]
 name = "sigplay"
-version = "0.0.7"
+version = "0.0.8"
 description = "A retro-modern terminal music player"
 readme = "README.md"
 license = "MIT"
