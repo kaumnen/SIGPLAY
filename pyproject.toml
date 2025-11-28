@@ -12,6 +12,7 @@ dependencies = [
     "miniaudio>=1.61",
     "pedalboard>=0.9.19",
     "strands-agents[openai]>=1.17.0",
+    "librosa>=0.11.0",
 ]
 
 [project.scripts]
