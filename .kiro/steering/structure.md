@@ -104,6 +104,8 @@ Agents are implemented as standalone Python scripts that:
 
 **Floppy Mix Agent Tools:**
 - `load_audio_track` - Load audio file into memory cache
+- `detect_bpm` - Analyze track tempo using beat tracking (librosa)
+- `time_stretch_to_bpm` - Time-stretch track to target BPM (±15% max, 60-200 BPM range)
 - `apply_effects` - Standard effects (reverb, compression, EQ, phaser, distortion, noise gate, pitch shift)
 - `apply_ladder_filter` - Moog-style resonant filter (LPF/HPF/BPF modes)
 - `apply_parallel_effects` - Dry/wet parallel processing

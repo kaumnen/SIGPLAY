@@ -141,6 +141,7 @@ Users can request mixing operations in plain English:
 - "Add warmth with bass boost and gentle compression"
 
 The AI agent interprets instructions and applies appropriate:
+- BPM detection and tempo synchronization (±15% max stretch)
 - Crossfades (2-6 seconds typical)
 - EQ adjustments (bass/treble boost/cut)
 - Effects (reverb, compression, chorus, delay)

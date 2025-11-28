@@ -25,8 +25,7 @@ numpy>=1.26.0                   # Audio buffer processing and RMS calculations
 mutagen>=1.47.0                 # Audio metadata extraction
 pedalboard>=0.9.19              # Audio effects and mixing (Floppy Mix feature)
 strands-agents[openai]>=1.17.0  # AI agent framework with OpenAI support
-strands-agents-tools>=0.2.16    # Additional tools for agents
-strands-agents-builder>=0.1.10  # Agent builder utilities
+librosa>=0.11.0                 # Audio analysis (BPM detection, time-stretching)
 ```
 
 ## Running & Testing
@@ -307,6 +306,22 @@ def load_audio_track(track_path: str, track_id: str) -> str:
     return f"✓ Loaded {track_id}: duration, sample_rate, channels"
 
 @tool
+def detect_bpm(track_id: str) -> str:
+    """Detect the BPM (tempo) of a loaded track using beat tracking."""
+    return f"✓ {track_id} BPM: 120.0 (X beats detected)"
+
+@tool
+def time_stretch_to_bpm(track_id: str, target_bpm: float, source_bpm: float | None = None) -> str:
+    """Time-stretch a track to match a target BPM without changing pitch.
+    
+    Guardrails:
+    - Target BPM must be between 60-200
+    - Maximum stretch is ±15% (beyond this sounds bad)
+    - Skips if already within 5% of target
+    """
+    return f"✓ Stretched {track_id}: source → target BPM"
+
+@tool
 def apply_effects(
     track_id: str,
     reverb_room_size: float = 0.0,
@@ -410,9 +425,10 @@ agent = Agent(
     model=model,
     system_prompt=SYSTEM_PROMPT,
     tools=[
-        load_audio_track, apply_effects, apply_ladder_filter,
-        apply_parallel_effects, apply_creative_effects,
-        automate_filter_sweep, add_track_to_mix, render_final_mix
+        load_audio_track, detect_bpm, time_stretch_to_bpm,
+        apply_effects, apply_ladder_filter, apply_parallel_effects,
+        apply_creative_effects, automate_filter_sweep,
+        add_track_to_mix, render_final_mix
     ],
     hooks=[ProgressHook()]
 )
