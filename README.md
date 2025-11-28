@@ -12,6 +12,11 @@ A terminal music player with a retro-modern vibe. Built with Python and Textual.
 - Real-time audio visualization
 - **Floppy Mix**: AI-powered DJ mixing using natural language instructions
 
+## What it looks like
+
+<img width="4478" height="2422" alt="main-view" src="https://github.com/user-attachments/assets/ba4901ea-8a97-4f57-a808-5232c6063018" />
+
+
 ## Run
 
 First, install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it:
