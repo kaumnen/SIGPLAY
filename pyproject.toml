@@ -3,6 +3,7 @@ name = "sigplay"
 version = "0.0.6"
 description = "A retro-modern terminal music player"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.13"
 dependencies = [
     "textual[syntax]>=6.5.0",
