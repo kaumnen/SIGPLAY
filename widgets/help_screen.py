@@ -4,53 +4,11 @@ from textual.screen import ModalScreen
 from textual.widgets import Static, Button
 from textual.containers import Container, VerticalScroll
 from textual.app import ComposeResult
+from textual import events
 
 
 class HelpScreen(ModalScreen[None]):
     """Modal screen displaying help information."""
-    
-    DEFAULT_CSS = """
-    HelpScreen {
-        align: center middle;
-    }
-    
-    #help-container {
-        width: 90;
-        height: 90%;
-        background: #1a1a1a;
-        border: thick #cc5500;
-        padding: 1 2;
-    }
-    
-    #help-scroll {
-        width: 100%;
-        height: 1fr;
-        margin-bottom: 1;
-    }
-    
-    #help-content {
-        width: 100%;
-        height: auto;
-    }
-    
-    #help-close-button {
-        width: 100%;
-        height: auto;
-        background: #2d2d2d;
-        color: #ff8c00;
-        border: solid #ff8c00;
-        text-style: bold;
-    }
-    
-    #help-close-button:hover {
-        background: #3d3d3d;
-        color: #ffb347;
-    }
-    
-    #help-close-button:focus {
-        border: solid #ffb347;
-    }
-    """
     
     def __init__(self, view_type: str = "main") -> None:
         """Initialize help screen.
@@ -194,7 +152,7 @@ crossfades, and mixing techniques automatically.
         if event.button.id == "help-close-button":
             self.dismiss()
     
-    async def on_key(self, event) -> None:
+    async def on_key(self, event: events.Key) -> None:
         """Handle key events."""
         if event.key == "escape":
             self.dismiss()

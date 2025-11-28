@@ -4,7 +4,6 @@ from textual.containers import Container, Vertical
 from textual.reactive import reactive
 from textual.widgets import ListView, ListItem, Label, Static
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual import events
 from models.track import Track
 import logging
@@ -14,10 +13,6 @@ logger = logging.getLogger(__name__)
 
 class TrackSelectionPanel(Container):
     """Left panel for track selection."""
-    
-    BINDINGS = [
-        Binding("space", "toggle_selection", "Select/Unselect"),
-    ]
     
     selected_tracks: reactive[list[Track]] = reactive([], init=False)
     
@@ -111,10 +106,6 @@ class TrackSelectionPanel(Container):
             track = self._track_items[self._cursor_index]
             self.toggle_track_selection(track)
     
-    def action_toggle_selection(self) -> None:
-        """Action handler for space key binding."""
-        self._toggle_current_track()
-    
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle track selection from ListView."""
         try:
@@ -130,7 +121,7 @@ class TrackSelectionPanel(Container):
         
         self._cursor_index = event.list_view.index
         self._update_visual_indicators()
-        
+    
     def toggle_track_selection(self, track: Track) -> None:
         """Add or remove track from selection."""
         try:

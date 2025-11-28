@@ -7,6 +7,7 @@ from rich.text import Text
 import numpy as np
 
 from services.audio_player import AudioPlayer, SAMPLE_RATE, NUM_CHANNELS
+from styles import COLOR_BASS, COLOR_PRIMARY, COLOR_HIGHLIGHT, COLOR_MUTED, COLOR_DIM, COLOR_INACTIVE
 
 logger = logging.getLogger(__name__)
 
@@ -51,20 +52,21 @@ class MetersView(Container):
     def _render_byte_stream(self, audio_bytes: bytes | None, audio_array: np.ndarray | None = None) -> Text:
         """Render actual audio bytes as hex stream with real-time stats."""
         result = Text()
+        bg_style = "#1a1a1a"
         
         if not audio_bytes or len(audio_bytes) == 0:
-            result.append("\n  [ NO AUDIO DATA ]\n", style="#333333")
-            result.append("  Waiting for playback...\n", style="#555555")
+            result.append("\n  [ NO AUDIO DATA ]\n", style=COLOR_INACTIVE)
+            result.append("  Waiting for playback...\n", style=COLOR_DIM)
             return result
         
         width = max(MIN_DISPLAY_WIDTH, self.terminal_width - 6)
         bytes_per_line = width // 3
         actual_bytes_per_sec = SAMPLE_RATE * NUM_CHANNELS * BYTES_PER_SAMPLE
         
-        result.append("\n", style="#1a1a1a")
+        result.append("\n", style=bg_style)
         
         if audio_array is not None and len(audio_array) > 0:
-            result.append("  ", style="#1a1a1a")
+            result.append("  ", style=bg_style)
             waveform = self._render_waveform(audio_array, width - 4)
             result.append(waveform)
             result.append("\n\n")
@@ -73,12 +75,12 @@ class MetersView(Container):
         right_info = f"{actual_bytes_per_sec:,} B/s"
         padding = width - len(left_info) - len(right_info)
         
-        result.append("  ", style="#1a1a1a")
-        result.append(f"Offset: {self.total_bytes_streamed:08X}", style="#888888")
-        result.append("  │  ", style="#555555")
-        result.append(f"{SAMPLE_RATE}Hz {NUM_CHANNELS}ch", style="#cc5500")
-        result.append(" " * max(1, padding), style="#1a1a1a")
-        result.append(f"{actual_bytes_per_sec:,} B/s", style="#ffb347")
+        result.append("  ", style=bg_style)
+        result.append(f"Offset: {self.total_bytes_streamed:08X}", style=COLOR_MUTED)
+        result.append("  │  ", style=COLOR_DIM)
+        result.append(f"{SAMPLE_RATE}Hz {NUM_CHANNELS}ch", style=COLOR_BASS)
+        result.append(" " * max(1, padding), style=bg_style)
+        result.append(f"{actual_bytes_per_sec:,} B/s", style=COLOR_HIGHLIGHT)
         result.append("\n")
         
         if audio_array is not None and len(audio_array) > 0:
@@ -87,15 +89,15 @@ class MetersView(Container):
             right_stats = f"Buffer: {len(audio_array):,} samples"
             stats_padding = width - len(left_stats) - len(right_stats)
             
-            result.append("  ", style="#1a1a1a")
-            result.append(f"Peak: {self.peak_amplitude:5d}", style="#ff8c00")
-            result.append("  │  ", style="#555555")
-            result.append(f"RMS: {rms_db:+.1f}dB", style="#ffb347")
-            result.append(" " * max(1, stats_padding), style="#1a1a1a")
-            result.append(f"Buffer: {len(audio_array):,} samples", style="#cc5500")
+            result.append("  ", style=bg_style)
+            result.append(f"Peak: {self.peak_amplitude:5d}", style=COLOR_PRIMARY)
+            result.append("  │  ", style=COLOR_DIM)
+            result.append(f"RMS: {rms_db:+.1f}dB", style=COLOR_HIGHLIGHT)
+            result.append(" " * max(1, stats_padding), style=bg_style)
+            result.append(f"Buffer: {len(audio_array):,} samples", style=COLOR_BASS)
             result.append("\n")
         
-        result.append("  " + "─" * width + "\n", style="#cc5500")
+        result.append("  " + "─" * width + "\n", style=COLOR_BASS)
         
         start_idx = self.byte_offset % len(audio_bytes)
         display_bytes = audio_bytes[start_idx:start_idx + bytes_per_line * BYTE_STREAM_NUM_LINES]
@@ -104,7 +106,7 @@ class MetersView(Container):
             display_bytes += audio_bytes[:bytes_per_line * BYTE_STREAM_NUM_LINES - len(display_bytes)]
         
         for line_idx in range(BYTE_STREAM_NUM_LINES):
-            result.append("  ", style="#1a1a1a")
+            result.append("  ", style=bg_style)
             line_start = line_idx * bytes_per_line
             line_end = line_start + bytes_per_line
             line_bytes = display_bytes[line_start:line_end]
@@ -114,14 +116,14 @@ class MetersView(Container):
                 
                 intensity = byte / 255.0
                 if intensity > 0.7:
-                    color = "#ff8c00"
+                    color = COLOR_PRIMARY
                 elif intensity > 0.4:
-                    color = "#ffb347"
+                    color = COLOR_HIGHLIGHT
                 else:
-                    color = "#cc5500"
+                    color = COLOR_BASS
                 
                 result.append(hex_str, style=color)
-                result.append(" ", style="#1a1a1a")
+                result.append(" ", style=bg_style)
             
             result.append("\n")
         
@@ -147,11 +149,11 @@ class MetersView(Container):
             char = waveform_chars[char_idx]
             
             if amplitude > 0.5:
-                color = "#ff8c00"
+                color = COLOR_PRIMARY
             elif amplitude > 0.2:
-                color = "#ffb347"
+                color = COLOR_HIGHLIGHT
             else:
-                color = "#cc5500"
+                color = COLOR_BASS
             
             result.append(char, style=color)
         

@@ -3,6 +3,7 @@ from __future__ import annotations
 from textual.containers import Container, Vertical
 from textual.widgets import TextArea, Label
 from textual.app import ComposeResult
+from textual import events
 import logging
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ Examples:
             self._text_area.text = self.DEFAULT_PLACEHOLDER
             self._text_area.add_class("placeholder")
     
-    def on_descendant_focus(self, event) -> None:
+    def on_descendant_focus(self, event: events.DescendantFocus) -> None:
         """Clear placeholder when text area gains focus."""
         if self._text_area and self._text_area.has_class("placeholder"):
             self._text_area.text = ""

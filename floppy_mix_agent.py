@@ -823,6 +823,37 @@ Be creative and use the full range of available effects to create professional, 
 """
 
 
+def _extract_agent_stats(agent_result) -> tuple[int, int]:
+    """Extract tool call count and token usage from agent result."""
+    tool_calls = 0
+    total_tokens = 0
+    
+    try:
+        metrics = getattr(agent_result, 'metrics', None)
+        if not metrics:
+            return tool_calls, total_tokens
+        
+        tool_metrics = getattr(metrics, 'tool_metrics', None)
+        if tool_metrics:
+            for tool_metric in tool_metrics.values():
+                tool_calls += getattr(tool_metric, 'call_count', 0)
+        
+        usage = getattr(metrics, 'accumulated_usage', None)
+        if usage:
+            if isinstance(usage, dict):
+                total_tokens = usage.get('totalTokens', 0) or (
+                    usage.get('inputTokens', 0) + usage.get('outputTokens', 0)
+                )
+            else:
+                total_tokens = getattr(usage, 'totalTokens', 0) or (
+                    getattr(usage, 'inputTokens', 0) + getattr(usage, 'outputTokens', 0)
+                )
+    except Exception as e:
+        logger.warning(f"Could not extract usage stats: {e}")
+    
+    return tool_calls, total_tokens
+
+
 def create_dj_agent() -> Agent:
     """Create and configure the DJ agent with OpenRouter."""
     api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -1007,32 +1038,8 @@ Start by loading all tracks, then apply effects, then add them to the mix, and f
             end_time = time.time()
             elapsed_time = end_time - start_time
             
-            tool_calls = 0
-            total_tokens = 0
-            
-            try:
-                if hasattr(agent_result, 'metrics') and agent_result.metrics:
-                    metrics = agent_result.metrics
-                    
-                    if hasattr(metrics, 'tool_metrics') and metrics.tool_metrics:
-                        for tool_name, tool_metric in metrics.tool_metrics.items():
-                            if hasattr(tool_metric, 'call_count'):
-                                tool_calls += tool_metric.call_count
-                    
-                    if hasattr(metrics, 'accumulated_usage') and metrics.accumulated_usage:
-                        usage = metrics.accumulated_usage
-                        if isinstance(usage, dict):
-                            total_tokens = usage.get('totalTokens', 0)
-                            if not total_tokens:
-                                total_tokens = usage.get('inputTokens', 0) + usage.get('outputTokens', 0)
-                        elif hasattr(usage, 'totalTokens'):
-                            total_tokens = usage.totalTokens
-                        elif hasattr(usage, 'inputTokens') and hasattr(usage, 'outputTokens'):
-                            total_tokens = usage.inputTokens + usage.outputTokens
-                
-                logger.info(f"Extracted stats: tool_calls={tool_calls}, tokens={total_tokens}")
-            except Exception as e:
-                logger.exception(f"Could not extract usage stats: {e}")
+            tool_calls, total_tokens = _extract_agent_stats(agent_result)
+            logger.info(f"Extracted stats: tool_calls={tool_calls}, tokens={total_tokens}")
             
             stats = {
                 'time_seconds': round(elapsed_time, 2),

@@ -5,9 +5,10 @@ from textual.widgets import Static
 from rich.text import Text
 from services.audio_player import AudioPlayer
 from models.track import format_time
+from styles import COLOR_BASS, COLOR_PRIMARY, COLOR_HIGHLIGHT, COLOR_MUTED, COLOR_INACTIVE
 
 PROGRESS_UPDATE_INTERVAL = 1.0
-VU_METER_UPDATE_FPS = 60
+VU_METER_UPDATE_FPS = 30
 VU_METER_WIDTH = 40
 VU_PEAK_DECAY = 0.95
 RMS_AMPLIFICATION = 1.5
@@ -25,6 +26,12 @@ class NowPlayingView(Container):
         self.vu_peak_left = 0.0
         self.vu_peak_right = 0.0
         self.vu_peak_decay = VU_PEAK_DECAY
+        self._title_widget: Static | None = None
+        self._artist_widget: Static | None = None
+        self._album_widget: Static | None = None
+        self._time_widget: Static | None = None
+        self._state_widget: Static | None = None
+        self._vu_widget: Static | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the now playing view with track info."""
@@ -39,6 +46,13 @@ class NowPlayingView(Container):
 
     def on_mount(self) -> None:
         """Start update timer for real-time progress updates."""
+        self._title_widget = self.query_one("#np-title", Static)
+        self._artist_widget = self.query_one("#np-artist", Static)
+        self._album_widget = self.query_one("#np-album", Static)
+        self._time_widget = self.query_one("#np-time", Static)
+        self._state_widget = self.query_one("#np-state", Static)
+        self._vu_widget = self.query_one("#np-vu-meters", Static)
+        
         self._update_timer = self.set_interval(PROGRESS_UPDATE_INTERVAL, self._update_progress)
         self._vu_timer = self.set_interval(1.0 / VU_METER_UPDATE_FPS, self._update_vu_meters)
         self._update_progress()
@@ -50,36 +64,20 @@ class NowPlayingView(Container):
         playback_state = self.audio_player.get_state()
         
         if current_track:
-            title_widget = self.query_one("#np-title", Static)
-            title_widget.update(current_track.title)
-            
-            artist_widget = self.query_one("#np-artist", Static)
-            artist_widget.update(f"Artist: {current_track.artist}")
-            
-            album_widget = self.query_one("#np-album", Static)
-            album_widget.update(f"Album: {current_track.album}")
-            
-            total_duration = current_track.duration_seconds
+            self._title_widget.update(current_track.title)
+            self._artist_widget.update(f"Artist: {current_track.artist}")
+            self._album_widget.update(f"Album: {current_track.album}")
             
             current_time_str = format_time(current_position)
-            total_time_str = format_time(total_duration)
-            time_widget = self.query_one("#np-time", Static)
-            time_widget.update(f"{current_time_str} / {total_time_str}")
+            total_time_str = format_time(current_track.duration_seconds)
+            self._time_widget.update(f"{current_time_str} / {total_time_str}")
         else:
-            title_widget = self.query_one("#np-title", Static)
-            title_widget.update("No track playing")
-            
-            artist_widget = self.query_one("#np-artist", Static)
-            artist_widget.update("Artist: Unknown")
-            
-            album_widget = self.query_one("#np-album", Static)
-            album_widget.update("Album: Unknown")
-            
-            time_widget = self.query_one("#np-time", Static)
-            time_widget.update("0:00 / 0:00")
+            self._title_widget.update("No track playing")
+            self._artist_widget.update("Artist: Unknown")
+            self._album_widget.update("Album: Unknown")
+            self._time_widget.update("0:00 / 0:00")
         
-        state_widget = self.query_one("#np-state", Static)
-        state_widget.update(f"State: {playback_state.value.capitalize()}")
+        self._state_widget.update(f"State: {playback_state.value.capitalize()}")
     
     def _calculate_rms(self, audio_data: np.ndarray) -> tuple[float, float]:
         """Calculate RMS levels for left and right channels."""
@@ -113,35 +111,35 @@ class NowPlayingView(Container):
         peak_left_pos = int(self.vu_peak_left * VU_METER_WIDTH)
         peak_right_pos = int(self.vu_peak_right * VU_METER_WIDTH)
         
-        result.append("L │", style="#888888")
+        result.append("L │", style=COLOR_MUTED)
         for i in range(VU_METER_WIDTH):
             if i < left_bars:
                 if i < VU_METER_WIDTH * 0.7:
-                    result.append("█", style="#cc5500")
+                    result.append("█", style=COLOR_BASS)
                 elif i < VU_METER_WIDTH * 0.85:
-                    result.append("█", style="#ff8c00")
+                    result.append("█", style=COLOR_PRIMARY)
                 else:
-                    result.append("█", style="#ffb347")
+                    result.append("█", style=COLOR_HIGHLIGHT)
             elif i == peak_left_pos:
                 result.append("│", style="#ffffff")
             else:
-                result.append("─", style="#333333")
-        result.append(f"│ {int(left_level * 100):3d}%\n", style="#888888")
+                result.append("─", style=COLOR_INACTIVE)
+        result.append(f"│ {int(left_level * 100):3d}%\n", style=COLOR_MUTED)
         
-        result.append("R │", style="#888888")
+        result.append("R │", style=COLOR_MUTED)
         for i in range(VU_METER_WIDTH):
             if i < right_bars:
                 if i < VU_METER_WIDTH * 0.7:
-                    result.append("█", style="#cc5500")
+                    result.append("█", style=COLOR_BASS)
                 elif i < VU_METER_WIDTH * 0.85:
-                    result.append("█", style="#ff8c00")
+                    result.append("█", style=COLOR_PRIMARY)
                 else:
-                    result.append("█", style="#ffb347")
+                    result.append("█", style=COLOR_HIGHLIGHT)
             elif i == peak_right_pos:
                 result.append("│", style="#ffffff")
             else:
-                result.append("─", style="#333333")
-        result.append(f"│ {int(right_level * 100):3d}%", style="#888888")
+                result.append("─", style=COLOR_INACTIVE)
+        result.append(f"│ {int(right_level * 100):3d}%", style=COLOR_MUTED)
         
         return result
     
@@ -167,7 +165,6 @@ class NowPlayingView(Container):
                 self.vu_peak_right = 0.0
                 vu_display = self._render_vu_meters(0.0, 0.0)
             
-            vu_widget = self.query_one("#np-vu-meters", Static)
-            vu_widget.update(vu_display)
+            self._vu_widget.update(vu_display)
         except Exception:
             pass
