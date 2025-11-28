@@ -20,29 +20,29 @@ logger = logging.getLogger(__name__)
 LARGE_MIX_THRESHOLD = 10
 
 MIX_PRESETS = {
-    "clean": {
-        "label": "✨ Clean",
-        "instructions": "Simple clean mix. Use 3-second crossfades between tracks. Do NOT apply any effects - just blend the tracks together smoothly. Normalize the output."
+    "party": {
+        "label": "🎉 Party",
+        "instructions": "High-energy party mix! Use short 2-second crossfades for quick transitions. Apply compression (threshold -10dB) for punchy dynamics, bass boost (+4dB) for that club feel, and a highpass filter at 35Hz to keep it tight. Make it loud and energetic!"
     },
-    "smooth": {
-        "label": "� PSmooth",
-        "instructions": "Smooth flowing mix with 4-second crossfades. Apply ONLY light compression (threshold -15dB) for consistent volume. No other effects. Keep it natural sounding."
+    "bass": {
+        "label": "🔊 Bass",
+        "instructions": "Heavy bass-focused mix. Use 3-second crossfades. Apply strong bass boost (+6dB), slight treble cut (-2dB), and compression (threshold -12dB) to keep the low end controlled but powerful. Add a subtle lowpass filter at 14000Hz for warmth."
     },
-    "warm": {
-        "label": "� Warmi",
-        "instructions": "Warm sounding mix with 3-second crossfades. Apply ONLY a gentle bass boost (+2dB) and slight treble cut (-1dB). No reverb, no other effects. Keep it subtle."
+    "running": {
+        "label": "🏃 Run",
+        "instructions": "Energetic running/workout mix with consistent tempo feel. Use 2-second crossfades for momentum. Apply compression (threshold -8dB) for consistent volume, slight bass boost (+3dB) for drive, and highpass at 40Hz to reduce rumble. Keep energy high throughout!"
     },
-    "club": {
-        "label": "� Clubl",
-        "instructions": "Club-style mix with 2-second crossfades. Apply ONLY compression (threshold -12dB) and a highpass filter at 30Hz to clean up sub-bass rumble. No other effects."
+    "chill": {
+        "label": "😌 Chill",
+        "instructions": "Relaxed chill mix for unwinding. Use long 5-second crossfades for smooth blending. Apply gentle lowpass filter at 12000Hz for warmth, subtle reverb (room size 0.15) with wet gain at -12dB. Keep it mellow and flowing."
+    },
+    "focus": {
+        "label": "🎯 Focus",
+        "instructions": "Clean focus/study mix. Use 4-second crossfades for seamless transitions. Apply light compression (threshold -15dB) for consistent volume only. No other effects - keep it clean and non-distracting. Normalize output."
     },
     "lofi": {
         "label": "📼 Lo-Fi",
-        "instructions": "Lo-fi style mix with 3-second crossfades. Apply ONLY a lowpass filter at 12000Hz to soften the highs. No bitcrush, no distortion - just the filter for a mellow tone."
-    },
-    "spacey": {
-        "label": "🌙 Spacey",
-        "instructions": "Spacious mix with 5-second crossfades. Apply ONLY subtle reverb (room size 0.2) using parallel processing with wet gain at -9dB. Keep the dry signal dominant."
+        "instructions": "Lo-fi aesthetic mix. Use 3-second crossfades. Apply lowpass filter at 10000Hz for that vintage warmth, gentle bass boost (+2dB), and subtle bitcrush (12-bit) for texture. Keep it cozy and nostalgic."
     }
 }
 
