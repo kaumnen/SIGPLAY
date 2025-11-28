@@ -19,6 +19,33 @@ logger = logging.getLogger(__name__)
 
 LARGE_MIX_THRESHOLD = 10
 
+MIX_PRESETS = {
+    "clean": {
+        "label": "✨ Clean",
+        "instructions": "Simple clean mix. Use 3-second crossfades between tracks. Do NOT apply any effects - just blend the tracks together smoothly. Normalize the output."
+    },
+    "smooth": {
+        "label": "� PSmooth",
+        "instructions": "Smooth flowing mix with 4-second crossfades. Apply ONLY light compression (threshold -15dB) for consistent volume. No other effects. Keep it natural sounding."
+    },
+    "warm": {
+        "label": "� Warmi",
+        "instructions": "Warm sounding mix with 3-second crossfades. Apply ONLY a gentle bass boost (+2dB) and slight treble cut (-1dB). No reverb, no other effects. Keep it subtle."
+    },
+    "club": {
+        "label": "� Clubl",
+        "instructions": "Club-style mix with 2-second crossfades. Apply ONLY compression (threshold -12dB) and a highpass filter at 30Hz to clean up sub-bass rumble. No other effects."
+    },
+    "lofi": {
+        "label": "📼 Lo-Fi",
+        "instructions": "Lo-fi style mix with 3-second crossfades. Apply ONLY a lowpass filter at 12000Hz to soften the highs. No bitcrush, no distortion - just the filter for a mellow tone."
+    },
+    "spacey": {
+        "label": "🌙 Spacey",
+        "instructions": "Spacious mix with 5-second crossfades. Apply ONLY subtle reverb (room size 0.2) using parallel processing with wet gain at -9dB. Keep the dry signal dominant."
+    }
+}
+
 
 class FloppyMixView(Container):
     """Full-screen view for Floppy Mix interface."""
@@ -47,6 +74,10 @@ class FloppyMixView(Container):
                 with Horizontal(id="floppy-mix-title-row"):
                     yield Label("💾 Floppy Mix", id="floppy-mix-title")
                     yield Button("🎵 Start Mix", id="start-mix-button", variant="primary")
+                with Horizontal(id="floppy-mix-presets-row"):
+                    yield Label("Presets:", id="presets-label")
+                    for preset_id, preset in MIX_PRESETS.items():
+                        yield Button(preset["label"], id=f"preset-{preset_id}", classes="preset-button")
                 with Horizontal(id="floppy-mix-status-row"):
                     yield LoadingIndicator(id="progress-spinner")
                     yield Static("Select tracks (Space), add instructions (Tab to switch), then select Start Mix.", id="status-display")
@@ -332,6 +363,11 @@ class FloppyMixView(Container):
             self._discard_mix()
             event.prevent_default()
             event.stop()
+        elif event.button.id and event.button.id.startswith("preset-"):
+            preset_id = event.button.id[7:]
+            self._apply_preset(preset_id)
+            event.prevent_default()
+            event.stop()
     
     def _save_mix(self) -> None:
         """Save the generated mix to the Music Library directory."""
@@ -515,6 +551,22 @@ class FloppyMixView(Container):
         
         self.app.notify("Mix discarded", severity="information")
         logger.debug("Mix discarded and view reset")
+    
+    def _apply_preset(self, preset_id: str) -> None:
+        """Apply a mix preset to the instructions panel."""
+        if preset_id not in MIX_PRESETS:
+            logger.warning(f"Unknown preset: {preset_id}")
+            return
+        
+        if self.mixing_state != "idle":
+            self.app.notify("Cannot change preset while mixing", severity="warning")
+            return
+        
+        preset = MIX_PRESETS[preset_id]
+        if self._instructions_panel:
+            self._instructions_panel.set_instructions(preset["instructions"])
+            self.app.notify(f"Applied {preset['label']} preset", severity="information", timeout=2)
+            logger.info(f"Applied preset: {preset_id}")
     
     def _update_status(self, message: str) -> None:
         """Update the status message."""

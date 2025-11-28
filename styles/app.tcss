@@ -205,6 +205,40 @@ FloppyMixView {
     margin-bottom: 1;
 }
 
+#floppy-mix-presets-row {
+    width: 100%;
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+    padding: 0 1;
+}
+
+#presets-label {
+    color: #ffb347;
+    margin-right: 2;
+    background: #2d2d2d;
+}
+
+.preset-button {
+    width: auto;
+    min-width: 12;
+    height: 3;
+    margin-right: 1;
+    background: #1a1a1a;
+    color: #fff8dc;
+    border: solid #cc5500;
+}
+
+.preset-button:hover {
+    background: #2d2d2d;
+    color: #ffb347;
+    border: solid #ff8c00;
+}
+
+.preset-button:focus {
+    border: solid #ff8c00;
+}
+
 #floppy-mix-title {
     color: #ff8c00;
     text-style: bold;

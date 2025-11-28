@@ -75,3 +75,10 @@ Examples:
         """Check if instructions are empty or just placeholder."""
         text = self.get_instructions()
         return not text
+    
+    def set_instructions(self, text: str) -> None:
+        """Set instructions text programmatically."""
+        if self._text_area:
+            self._text_area.remove_class("placeholder")
+            self._text_area.text = text
+            logger.debug(f"Instructions set: {text[:50]}...")

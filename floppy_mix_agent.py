@@ -19,7 +19,7 @@ from strands import Agent, tool
 from strands.models.openai import OpenAIModel
 from strands.hooks import HookProvider, HookRegistry, BeforeToolCallEvent, AfterToolCallEvent
 from pedalboard import (
-    Pedalboard, Reverb, Compressor, Chorus, Delay, 
+    Pedalboard, Reverb, Compressor, Chorus, Delay, Limiter,
     HighpassFilter, LowpassFilter, Gain, LowShelfFilter, HighShelfFilter,
     LadderFilter, Phaser, Distortion, Clipping, Bitcrush, NoiseGate,
     PitchShift, Mix
@@ -209,7 +209,12 @@ def apply_effects(
             applied.append(f"distortion {distortion_drive_db}dB")
         
         if compressor_threshold_db < 0:
-            effects.append(Compressor(threshold_db=compressor_threshold_db))
+            effects.append(Compressor(
+                threshold_db=compressor_threshold_db,
+                ratio=4.0,
+                attack_ms=10.0,
+                release_ms=100.0
+            ))
             applied.append(f"compressor {compressor_threshold_db}dB")
         
         if pitch_shift_semitones != 0:
@@ -217,19 +222,39 @@ def apply_effects(
             applied.append(f"pitch {pitch_shift_semitones:+.1f}st")
         
         if chorus_rate_hz > 0:
-            effects.append(Chorus(rate_hz=chorus_rate_hz))
+            effects.append(Chorus(
+                rate_hz=chorus_rate_hz,
+                depth=0.25,
+                centre_delay_ms=7.0,
+                mix=0.5
+            ))
             applied.append(f"chorus {chorus_rate_hz}Hz")
         
         if phaser_rate_hz > 0:
-            effects.append(Phaser(rate_hz=phaser_rate_hz))
+            effects.append(Phaser(
+                rate_hz=phaser_rate_hz,
+                depth=0.5,
+                feedback=0.3,
+                mix=0.5
+            ))
             applied.append(f"phaser {phaser_rate_hz}Hz")
         
         if delay_seconds > 0:
-            effects.append(Delay(delay_seconds=delay_seconds))
+            effects.append(Delay(
+                delay_seconds=delay_seconds,
+                feedback=0.3,
+                mix=0.3
+            ))
             applied.append(f"delay {delay_seconds}s")
         
         if reverb_room_size > 0:
-            effects.append(Reverb(room_size=reverb_room_size))
+            effects.append(Reverb(
+                room_size=reverb_room_size,
+                damping=0.5,
+                wet_level=0.3,
+                dry_level=0.7,
+                width=1.0
+            ))
             applied.append(f"reverb {reverb_room_size}")
         
         if gain_db != 0:
@@ -569,9 +594,8 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
                     final_audio = np.concatenate([final_audio, audio], axis=1)
         
         if normalize:
-            max_val = np.max(np.abs(final_audio))
-            if max_val > 0:
-                final_audio = final_audio / max_val * 0.95
+            limiter = Limiter(threshold_db=-1.0, release_ms=100.0)
+            final_audio = limiter(final_audio, sample_rate)
         
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -589,95 +613,77 @@ def render_final_mix(output_path: str, normalize: bool = True) -> str:
         logger.error(f"Failed to render mix: {e}")
         return f"✗ Error rendering mix: {str(e)}"
 
-DJ_AGENT_SYSTEM_PROMPT = """You are an expert DJ and audio engineer with deep knowledge of music mixing and audio processing.
+DJ_AGENT_SYSTEM_PROMPT = """You are an expert DJ and audio engineer. Your #1 rule: LESS IS MORE.
 
-Your role is to create professional DJ mixes using the provided audio processing tools.
+CRITICAL: Most mixes sound best with MINIMAL or NO effects. Only apply effects when explicitly requested.
+If the user says "clean" or "no effects", apply ZERO effects - just crossfade the tracks.
 
 WORKFLOW:
 1. Load each track using load_audio_track(track_path, track_id)
-2. Apply effects to each track using the various effect tools
+2. Apply effects ONLY if specifically requested (skip this step for clean mixes)
 3. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
 4. Render the final mix using render_final_mix(output_path)
 
+GOLDEN RULES:
+- When in doubt, DON'T apply an effect
+- Never stack more than 1-2 effects on a single track
+- Use very conservative values (half of what you think)
+- The original audio already sounds good - don't ruin it
+
 AVAILABLE TOOLS:
 
-1. load_audio_track(track_path, track_id)
-   - Loads an audio file into memory
-   - Use track_id like 'track_1', 'track_2', etc.
+1. load_audio_track(track_path, track_id) - Load audio file
 
-2. apply_effects(track_id, ...)
-   - Apply standard audio effects to a loaded track
-   - Parameters: reverb_room_size, compressor_threshold_db, chorus_rate_hz, delay_seconds,
-     highpass_cutoff_hz, lowpass_cutoff_hz, bass_boost_db, treble_boost_db, gain_db,
-     phaser_rate_hz, distortion_drive_db, noise_gate_threshold_db, pitch_shift_semitones
-   - All parameters are optional (0 = off)
-   - Examples:
-     * Boost bass: bass_boost_db=4 to 6
-     * Add warmth: distortion_drive_db=10 to 15
-     * Movement: phaser_rate_hz=0.5 to 1.5
-     * Clean noise: noise_gate_threshold_db=-40 to -50
-     * Harmonic mixing: pitch_shift_semitones=+/-7 (fifth) or +/-12 (octave)
+2. apply_effects(track_id, ...) - Standard effects (USE SPARINGLY)
+   - compressor_threshold_db: Use -15 to -18 (gentle), never below -10
+   - bass_boost_db: Use +2 to +3 max (not +6!)
+   - treble_boost_db: Use +1 to +2 max
+   - reverb_room_size: Use 0.15 to 0.25 max (not 0.5!)
+   - highpass_cutoff_hz: 30-60Hz to remove rumble only
+   - lowpass_cutoff_hz: 12000-15000Hz for subtle warmth
+   - gain_db: Small adjustments only (-3 to +3)
 
-3. apply_ladder_filter(track_id, mode, cutoff_hz, resonance)
-   - Apply Moog-style resonant filter for classic synth sounds
-   - Modes: "LPF24" (low-pass), "HPF24" (high-pass), "BPF24" (band-pass)
-   - Resonance: 0.3-0.8 for character, higher for dramatic effect
-   - Great for creating tension and release
+3. apply_ladder_filter(track_id, mode, cutoff_hz, resonance) - Resonant filter
+   - Only use if user specifically asks for filter effects
+   - Keep resonance low (0.2-0.4)
 
-4. apply_parallel_effects(track_id, dry_gain_db, wet_reverb_room_size, wet_delay_seconds, wet_gain_db)
-   - Process dry and wet signals separately for more control
-   - Maintains clarity while adding depth
-   - Typical: dry_gain_db=0, wet_gain_db=-6
+4. apply_parallel_effects(track_id, ...) - Parallel wet/dry processing
+   - Best way to add reverb - keeps dry signal intact
+   - wet_gain_db should be -9 to -12 (very subtle)
 
-5. apply_creative_effects(track_id, bitcrush_bit_depth, clipping_threshold_db)
-   - Lo-fi and aggressive effects
-   - Bitcrush: 4-12 bits for retro/lo-fi sound
-   - Clipping: -6 to -3 dB for aggressive distortion
+5. apply_creative_effects(track_id, ...) - Lo-fi effects
+   - ONLY use if user explicitly asks for lo-fi/retro sound
+   - bitcrush: 12-bit is subtle, 8-bit is noticeable
 
-6. automate_filter_sweep(track_id, start_cutoff_hz, end_cutoff_hz, filter_mode, resonance)
-   - Automate filter cutoff across entire track
-   - Creates dynamic movement and builds tension
-   - Example: 200Hz -> 5000Hz for build-up
+6. automate_filter_sweep(track_id, ...) - Filter automation
+   - Only for dramatic builds when requested
 
 7. add_track_to_mix(track_id, crossfade_duration, start_time, end_time)
-   - Add a processed track to the final mix
-   - crossfade_duration: seconds to blend with previous track (typical: 2-6 seconds)
-   - start_time/end_time: optional trimming (in seconds)
+   - crossfade_duration: 2-4 seconds is usually ideal
+   - First track always has crossfade_duration=0
 
-8. render_final_mix(output_path, normalize)
-   - Render and save the final mix
-   - normalize=True prevents clipping (recommended)
+8. render_final_mix(output_path, normalize=True) - Always normalize
 
-MIXING BEST PRACTICES:
-- Use smooth crossfades (2-6 seconds) to blend tracks naturally
-- Apply compression (threshold -15 to -10 dB) for consistent volume
-- Use subtle reverb (room_size 0.2-0.5) for cohesion
-- Normalize the final output to prevent clipping
-- Match energy levels between tracks with gain adjustments
-- Use EQ (bass/treble boost) to shape the overall sound
-- Add phaser/chorus for movement and depth
-- Use parallel processing to maintain clarity while adding effects
-- Apply filter sweeps for dramatic builds and transitions
-- Use pitch shifting for harmonic mixing (key matching)
-- Clean up recordings with noise gate before processing
+EFFECT GUIDELINES (only when requested):
+- "compression" or "consistent volume": compressor_threshold_db=-15 (gentle!)
+- "bass boost": bass_boost_db=+2 (subtle!)
+- "warm" or "mellow": lowpass_cutoff_hz=12000 (just soften highs)
+- "reverb" or "spacey": use apply_parallel_effects with wet_gain_db=-9
+- "clean bass": highpass_cutoff_hz=40 (remove sub-rumble only)
+- "lo-fi": lowpass_cutoff_hz=10000 (NO bitcrush unless they say "8-bit" or "crushed")
 
-CREATIVE TECHNIQUES:
-- Filter sweeps: Build tension with automate_filter_sweep (200Hz -> 5000Hz)
-- Parallel reverb: Use apply_parallel_effects for depth without muddiness
-- Lo-fi vibes: Use bitcrush (8-bit) + distortion for retro sound
-- Harmonic mixing: Pitch shift tracks by +/-7 semitones (fifth) for key matching
-- Movement: Combine phaser + chorus for swirling effects
-- Warmth: Subtle distortion (10-15dB) + bass boost for analog feel
-
-EXAMPLE WORKFLOW:
+EXAMPLE - CLEAN MIX (most common):
 1. load_audio_track('/path/track1.mp3', 'track_1')
 2. load_audio_track('/path/track2.mp3', 'track_2')
-3. apply_effects('track_1', compressor_threshold_db=-12, bass_boost_db=3, phaser_rate_hz=0.8)
-4. apply_parallel_effects('track_2', wet_reverb_room_size=0.4, wet_gain_db=-6)
-5. automate_filter_sweep('track_2', start_cutoff_hz=200, end_cutoff_hz=5000)
-6. add_track_to_mix('track_1', crossfade_duration=0)
-7. add_track_to_mix('track_2', crossfade_duration=4.0)
-8. render_final_mix('/output/mix.wav', normalize=True)
+3. add_track_to_mix('track_1', crossfade_duration=0)
+4. add_track_to_mix('track_2', crossfade_duration=3.0)
+5. render_final_mix('/output/mix.wav', normalize=True)
+
+EXAMPLE - WITH LIGHT COMPRESSION:
+1. load_audio_track('/path/track1.mp3', 'track_1')
+2. apply_effects('track_1', compressor_threshold_db=-15)
+3. add_track_to_mix('track_1', crossfade_duration=0)
+4. render_final_mix('/output/mix.wav', normalize=True)
 
 Interpret the user's natural language instructions and translate them into appropriate tool calls.
 Be creative and use the full range of available effects to create professional, engaging mixes.
