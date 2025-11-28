@@ -43,6 +43,10 @@ MIX_PRESETS = {
     "lofi": {
         "label": "📼 Lo-Fi",
         "instructions": "Lo-fi aesthetic mix. Use 3-second crossfades. Apply lowpass filter at 10000Hz for that vintage warmth, gentle bass boost (+2dB), and subtle bitcrush (12-bit) for texture. Keep it cozy and nostalgic."
+    },
+    "beatmatch": {
+        "label": "🎚️ BPM Sync",
+        "instructions": "Beatmatched DJ mix! First detect BPM of all tracks, then sync tempos to the first track's BPM. Use 4-second crossfades for smooth beat-aligned transitions. Apply light compression (threshold -15dB) for consistent levels. Keep it clean - let the tempo sync do the work!"
     }
 }
 

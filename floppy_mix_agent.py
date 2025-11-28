@@ -25,6 +25,7 @@ from pedalboard import (
     PitchShift, Mix
 )
 from pedalboard.io import AudioFile
+import librosa
 
 log_dir = Path.home() / '.local' / 'share' / 'sigplay'
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -46,10 +47,12 @@ class MixContext:
     def __init__(self):
         self.audio_cache: dict = {}
         self.mix_segments: list = []
+        self.bpm_cache: dict = {}
     
     def clear(self):
         self.audio_cache.clear()
         self.mix_segments.clear()
+        self.bpm_cache.clear()
 
 
 _mix_context = MixContext()
@@ -60,6 +63,8 @@ class ProgressHook(HookProvider):
     
     TOOL_DESCRIPTIONS = {
         'load_audio_track': '📂 Loading track',
+        'detect_bpm': '🎵 Detecting BPM',
+        'time_stretch_to_bpm': '⏱️ Time-stretching',
         'apply_effects': '🎛️ Applying effects',
         'apply_ladder_filter': '🎚️ Applying ladder filter',
         'apply_parallel_effects': '🔀 Applying parallel effects',
@@ -130,6 +135,123 @@ def load_audio_track(track_path: str, track_id: str) -> str:
     except Exception as e:
         logger.error(f"Failed to load {track_path}: {e}")
         return f"✗ Error loading {track_path}: {str(e)}"
+
+
+@tool
+def detect_bpm(track_id: str) -> str:
+    """Detect the BPM (tempo) of a loaded track using beat tracking.
+    
+    Args:
+        track_id: ID of the loaded track to analyze
+        
+    Returns:
+        Detected BPM value and confidence info
+    """
+    try:
+        if track_id not in _mix_context.audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        track_data = _mix_context.audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        if audio.shape[0] > 1:
+            audio_mono = np.mean(audio, axis=0)
+        else:
+            audio_mono = audio[0]
+        
+        tempo, beat_frames = librosa.beat.beat_track(y=audio_mono, sr=sample_rate)
+        
+        if hasattr(tempo, '__len__'):
+            bpm = float(tempo[0])
+        else:
+            bpm = float(tempo)
+        
+        _mix_context.bpm_cache[track_id] = bpm
+        
+        beat_times = librosa.frames_to_time(beat_frames, sr=sample_rate)
+        num_beats = len(beat_times)
+        
+        logger.info(f"Detected BPM for {track_id}: {bpm:.1f} ({num_beats} beats)")
+        return f"✓ {track_id} BPM: {bpm:.1f} ({num_beats} beats detected)"
+        
+    except Exception as e:
+        logger.error(f"Failed to detect BPM for {track_id}: {e}")
+        return f"✗ Error detecting BPM for {track_id}: {str(e)}"
+
+
+MIN_BPM = 60.0
+MAX_BPM = 200.0
+MAX_STRETCH_RATIO = 1.15
+MIN_STRETCH_RATIO = 0.85
+
+
+@tool
+def time_stretch_to_bpm(track_id: str, target_bpm: float, source_bpm: float | None = None) -> str:
+    """Time-stretch a track to match a target BPM without changing pitch.
+    
+    Guardrails:
+    - Target BPM must be between 60-200
+    - Maximum stretch is ±15% (beyond this sounds bad)
+    - Skips if already within 5% of target
+    
+    Args:
+        track_id: ID of the loaded track to stretch
+        target_bpm: Target BPM to stretch to (60-200 range)
+        source_bpm: Source BPM (if None, uses cached BPM from detect_bpm or auto-detects)
+        
+    Returns:
+        Success message with stretch ratio applied
+    """
+    try:
+        if track_id not in _mix_context.audio_cache:
+            return f"✗ Error: Track {track_id} not loaded"
+        
+        if not MIN_BPM <= target_bpm <= MAX_BPM:
+            return f"✗ Error: Target BPM {target_bpm} out of range ({MIN_BPM}-{MAX_BPM})"
+        
+        track_data = _mix_context.audio_cache[track_id]
+        audio = track_data['audio']
+        sample_rate = track_data['sample_rate']
+        
+        if source_bpm is None:
+            if track_id in _mix_context.bpm_cache:
+                source_bpm = _mix_context.bpm_cache[track_id]
+            else:
+                if audio.shape[0] > 1:
+                    audio_mono = np.mean(audio, axis=0)
+                else:
+                    audio_mono = audio[0]
+                tempo, _ = librosa.beat.beat_track(y=audio_mono, sr=sample_rate)
+                source_bpm = float(tempo[0]) if hasattr(tempo, '__len__') else float(tempo)
+                _mix_context.bpm_cache[track_id] = source_bpm
+        
+        stretch_ratio = source_bpm / target_bpm
+        
+        if 0.95 <= stretch_ratio <= 1.05:
+            logger.info(f"Skipping stretch for {track_id}: ratio {stretch_ratio:.3f} too close to 1.0")
+            return f"✓ {track_id} already close to target ({source_bpm:.1f} → {target_bpm:.1f}, ratio {stretch_ratio:.3f})"
+        
+        if stretch_ratio > MAX_STRETCH_RATIO or stretch_ratio < MIN_STRETCH_RATIO:
+            pct_change = abs(1 - stretch_ratio) * 100
+            logger.warning(f"Stretch ratio {stretch_ratio:.3f} exceeds ±15% limit for {track_id}")
+            return f"✗ Cannot stretch {track_id}: {source_bpm:.1f} → {target_bpm:.1f} BPM requires {pct_change:.0f}% change (max 15%). Tracks are too different in tempo."
+        
+        stretched_channels = []
+        for ch in range(audio.shape[0]):
+            stretched_ch = librosa.effects.time_stretch(audio[ch], rate=1.0/stretch_ratio)
+            stretched_channels.append(stretched_ch)
+        track_data['audio'] = np.array(stretched_channels)
+        
+        _mix_context.bpm_cache[track_id] = target_bpm
+        
+        pct_change = abs(1 - stretch_ratio) * 100
+        logger.info(f"Stretched {track_id}: {source_bpm:.1f} → {target_bpm:.1f} BPM ({pct_change:.1f}% change)")
+        return f"✓ Stretched {track_id}: {source_bpm:.1f} → {target_bpm:.1f} BPM ({pct_change:.1f}% change)"
+        
+    except Exception as e:
+        logger.error(f"Failed to time-stretch {track_id}: {e}")
+        return f"✗ Error time-stretching {track_id}: {str(e)}"
 
 
 
@@ -620,9 +742,10 @@ If the user says "clean" or "no effects", apply ZERO effects - just crossfade th
 
 WORKFLOW:
 1. Load each track using load_audio_track(track_path, track_id)
-2. Apply effects ONLY if specifically requested (skip this step for clean mixes)
-3. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
-4. Render the final mix using render_final_mix(output_path)
+2. If user wants BPM matching: detect_bpm() then time_stretch_to_bpm() to sync tempos
+3. Apply effects ONLY if specifically requested (skip this step for clean mixes)
+4. Add tracks to the mix using add_track_to_mix(track_id, crossfade_duration)
+5. Render the final mix using render_final_mix(output_path)
 
 GOLDEN RULES:
 - When in doubt, DON'T apply an effect
@@ -634,7 +757,17 @@ AVAILABLE TOOLS:
 
 1. load_audio_track(track_path, track_id) - Load audio file
 
-2. apply_effects(track_id, ...) - Standard effects (USE SPARINGLY)
+2. detect_bpm(track_id) - Analyze track and return detected BPM
+   - Call after loading to find the track's tempo
+   - Returns BPM value (e.g., 120.5 BPM)
+
+3. time_stretch_to_bpm(track_id, target_bpm, source_bpm=None) - Time-stretch without pitch change
+   - Stretches track to match target BPM (must be 60-200 BPM)
+   - LIMIT: Max ±15% tempo change (beyond this sounds bad)
+   - Skips if already within 5% of target
+   - If tracks differ by >15%, DON'T try to sync - just crossfade them
+
+4. apply_effects(track_id, ...) - Standard effects (USE SPARINGLY)
    - compressor_threshold_db: Use -15 to -18 (gentle), never below -10
    - bass_boost_db: Use +2 to +3 max (not +6!)
    - treble_boost_db: Use +1 to +2 max
@@ -715,6 +848,8 @@ def create_dj_agent() -> Agent:
         system_prompt=DJ_AGENT_SYSTEM_PROMPT,
         tools=[
             load_audio_track,
+            detect_bpm,
+            time_stretch_to_bpm,
             apply_effects,
             apply_ladder_filter,
             apply_parallel_effects,
@@ -817,6 +952,21 @@ Interpret the user's instructions and apply appropriate effects. If they mention
 - "aggressive" or "distorted": use distortion_drive_db=15-20 or clipping_threshold_db=-6
 - "resonant" or "synth": use apply_ladder_filter() with resonance=0.5-0.8
 - "crossfade" or "blend": use crossfade_duration=4-6 seconds
+- "sync tempo", "match bpm", "beatmatch": detect_bpm() all tracks, then time_stretch_to_bpm() to match
+- "speed up" or "faster": time_stretch_to_bpm() with higher target BPM
+- "slow down" or "slower": time_stretch_to_bpm() with lower target BPM
+
+BPM MATCHING WORKFLOW (when requested):
+1. Load all tracks
+2. detect_bpm() on each track
+3. Check if BPMs are within 15% of each other - if not, SKIP tempo sync and warn user
+4. Choose target BPM (usually the first track's BPM, or user-specified)
+5. time_stretch_to_bpm() on tracks that need adjustment (only if within ±15%)
+6. Apply effects if requested
+7. Add to mix and render
+
+IMPORTANT: If tracks have very different tempos (e.g., 80 BPM vs 140 BPM), do NOT try to sync them.
+Just mix them with crossfades and let the user know tempo sync wasn't possible.
 
 Be creative and use the full range of tools to create an engaging mix that matches the user's vision.
 Start by loading all tracks, then apply effects, then add them to the mix, and finally render.
