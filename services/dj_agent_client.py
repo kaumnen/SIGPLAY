@@ -39,19 +39,25 @@ class DJAgentClient:
     
     AGENT_TIMEOUT = 300  # 5 minutes in seconds
     
-    def __init__(self, agent_script_path: str = "floppy_mix_agent.py"):
+    def __init__(self, agent_script_path: str | None = None):
         """
         Initialize with path to DJ agent script.
         
         Args:
-            agent_script_path: Path to the DJ agent Python script
+            agent_script_path: Path to the DJ agent Python script.
+                               If None, resolves to floppy_mix_agent.py in project root.
         """
-        self.agent_script_path = Path(agent_script_path)
+        if agent_script_path is None:
+            project_root = Path(__file__).parent.parent
+            self.agent_script_path = project_root / "floppy_mix_agent.py"
+        else:
+            self.agent_script_path = Path(agent_script_path)
+        
         self._agent_process: asyncio.subprocess.Process | None = None
         self._cancelled = False
         
         if not self.agent_script_path.exists():
-            raise FileNotFoundError(f"DJ agent script not found: {agent_script_path}")
+            raise FileNotFoundError(f"DJ agent script not found: {self.agent_script_path}")
     
     async def cancel(self) -> None:
         """Cancel an in-progress mix operation."""
