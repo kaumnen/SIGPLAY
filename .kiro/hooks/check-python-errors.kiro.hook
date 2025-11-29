@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Check Python Errors",
+  "description": "Runs Python syntax and type checking when Python files are edited",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "uv run python -m py_compile ${filePath}"
+  }
+}
