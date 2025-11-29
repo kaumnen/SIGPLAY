@@ -14,7 +14,9 @@ A terminal music player with a retro-modern vibe. Built with Python and Textual.
 
 ## What it looks like
 
-<img width="4478" height="2422" alt="main-view" src="https://github.com/user-attachments/assets/ba4901ea-8a97-4f57-a808-5232c6063018" />
+<p align="center">
+  <img alt="main-view" src="https://github.com/user-attachments/assets/ba4901ea-8a97-4f57-a808-5232c6063018" width="800" />
+</p>
 
 
 ## Run
