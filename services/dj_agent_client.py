@@ -45,11 +45,10 @@ class DJAgentClient:
         
         Args:
             agent_script_path: Path to the DJ agent Python script.
-                               If None, resolves to floppy_mix_agent.py in project root.
+                               If None, searches common locations.
         """
         if agent_script_path is None:
-            project_root = Path(__file__).parent.parent
-            self.agent_script_path = project_root / "floppy_mix_agent.py"
+            self.agent_script_path = self._find_agent_script()
         else:
             self.agent_script_path = Path(agent_script_path)
         
@@ -58,6 +57,34 @@ class DJAgentClient:
         
         if not self.agent_script_path.exists():
             raise FileNotFoundError(f"DJ agent script not found: {self.agent_script_path}")
+    
+    def _find_agent_script(self) -> Path:
+        """Find the agent script in common locations."""
+        script_name = "floppy_mix_agent.py"
+        
+        search_paths = [
+            Path(__file__).parent.parent / script_name,
+            Path.cwd() / script_name,
+            Path(__file__).parent / script_name,
+        ]
+        
+        import sys
+        if hasattr(sys, '_MEIPASS'):
+            search_paths.insert(0, Path(sys._MEIPASS) / script_name)
+        
+        import main
+        main_path = Path(main.__file__).parent / script_name
+        search_paths.insert(0, main_path)
+        
+        for path in search_paths:
+            if path.exists():
+                logger.debug(f"Found agent script at: {path}")
+                return path
+        
+        raise FileNotFoundError(
+            f"DJ agent script not found. Searched:\n" +
+            "\n".join(f"  - {p}" for p in search_paths)
+        )
     
     async def cancel(self) -> None:
         """Cancel an in-progress mix operation."""
